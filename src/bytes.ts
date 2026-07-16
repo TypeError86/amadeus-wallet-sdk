@@ -7,10 +7,19 @@
  * matching the byte output of the extension's `new TextEncoder().encode(...)`.
  */
 
-import { concatBytes as nobleConcat, randomBytes as nobleRandom } from '@noble/hashes/utils'
+import {
+	bytesToHex,
+	concatBytes as nobleConcat,
+	randomBytes as nobleRandom
+} from '@noble/hashes/utils'
 
 export const concatBytes = nobleConcat
 export const randomBytes = nobleRandom
+
+/** A random hex id (default 16 bytes → 32 hex chars). Used for request ids. */
+export function randomId(byteLength = 16): string {
+	return bytesToHex(nobleRandom(byteLength))
+}
 
 export function utf8ToBytes(value: string): Uint8Array {
 	return new TextEncoder().encode(value)

@@ -14,6 +14,10 @@
 		".": {
 			"import": "./dist/index.js",
 			"types": "./dist/index.d.ts"
+		},
+		"./react": {
+			"import": "./dist/react/index.js",
+			"types": "./dist/react/index.d.ts"
 		}
 	},
 	"files": [
@@ -52,14 +56,22 @@
 		"zod": "^3.24.0"
 	},
 	"peerDependencies": {
-		"@amadeus-protocol/sdk": "^1.1.2"
+		"@amadeus-protocol/sdk": "^1.1.2",
+		"react": ">=18.0.0"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
 		"@amadeus-protocol/sdk": "^1.1.2",
 		"@eslint/js": "^9.21.0",
 		"@types/node": "^22.14.0",
+		"@types/react": "^19.0.0",
 		"@vitest/coverage-v8": "^2.1.0",
 		"eslint": "^9.21.0",
+		"react": "^19.0.0",
 		"prettier": "^3.7.2",
 		"tsdown": "^0.22.0",
 		"typescript": "^5.7.2",

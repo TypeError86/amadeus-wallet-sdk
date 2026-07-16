@@ -20,3 +20,13 @@ export * from './crypto/bls'
 export * from './crypto/apikey'
 export * from './crypto/connect'
 export * from './crypto/box'
+
+// Transport (connect handshake + sealed envelopes + deep-link/QR URIs)
+export * from './transport/envelope'
+export * from './transport/uri'
+export * from './transport/session'
+
+// Wallet-side request dispatch + framework-agnostic dApp client.
+// React bindings live in the `@amadeus-protocol/wallet-sdk/react` subpath.
+export * from './wallet/handler'
+export * from './client/injected'
