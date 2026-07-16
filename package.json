@@ -1,0 +1,69 @@
+{
+	"name": "@amadeus-protocol/wallet-sdk",
+	"version": "0.1.0",
+	"description": "Shared dApp <-> wallet connection layer for Amadeus Protocol: BLS API-key tokens, transaction signing, message/connect signing, and the typed provider contract. One audited implementation for the wallet, the extension, and every dApp.",
+	"type": "module",
+	"sideEffects": false,
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"lint": "eslint src",
+		"lint:fix": "eslint src --fix",
+		"prettier:check": "prettier --check .",
+		"prettier:format": "prettier --write .",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"prepublishOnly": "npm run build && npm run test && npm run lint",
+		"prepack": "npm run build"
+	},
+	"keywords": [
+		"amadeus",
+		"protocol",
+		"wallet",
+		"dapp",
+		"connect",
+		"bls12-381",
+		"sdk"
+	],
+	"author": "Amadeus Protocol",
+	"license": "MIT",
+	"dependencies": {
+		"@noble/ciphers": "^2.1.1",
+		"@noble/curves": "^1.9.1",
+		"@noble/hashes": "^1.8.0",
+		"zod": "^3.24.0"
+	},
+	"peerDependencies": {
+		"@amadeus-protocol/sdk": "^1.1.2"
+	},
+	"devDependencies": {
+		"@amadeus-protocol/sdk": "^1.1.2",
+		"@eslint/js": "^9.21.0",
+		"@types/node": "^22.14.0",
+		"@vitest/coverage-v8": "^2.1.0",
+		"eslint": "^9.21.0",
+		"prettier": "^3.7.2",
+		"tsdown": "^0.22.0",
+		"typescript": "^5.7.2",
+		"typescript-eslint": "^8.24.1",
+		"vitest": "^2.1.0"
+	}
+}
