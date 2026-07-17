@@ -5,7 +5,7 @@ import type { Server } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createBridgeServer } from '../../bridge/server.mjs'
-import { BridgeClient } from '../transport/bridge'
+import { BridgeClient, deriveBridgeChannels } from '../transport/bridge'
 import {
 	createMemorySeenStore,
 	guardRequest,
@@ -50,15 +50,18 @@ describe('bridge transport (cross-device full flow)', () => {
 		const session = completeConnect(pending, walletSession.response)
 		expect(session.bridgeUrl).toBe(baseUrl)
 
-		// 2. Both sides connect to the relay under their session-key client ids.
+		// 2. Both sides derive the SAME secret channel pair from the shared key,
+		//    and connect to the relay on their respective channels (a third party
+		//    who only saw the public session keys cannot address these).
+		const channels = deriveBridgeChannels(session.sharedKey)
 		const dappBridge = new BridgeClient({
 			bridgeUrl: baseUrl,
-			clientId: session.selfPublicKey,
+			clientId: channels.toDapp,
 			pollWaitSeconds: 2
 		})
 		const walletBridge = new BridgeClient({
 			bridgeUrl: baseUrl,
-			clientId: walletSession.walletKeypair.publicKey,
+			clientId: channels.toWallet,
 			pollWaitSeconds: 2
 		})
 
@@ -90,7 +93,7 @@ describe('bridge transport (cross-device full flow)', () => {
 			origin: session.origin,
 			params: { contract: 'Coin', method: 'transfer', args: [address, '1000000000', 'AMA'] }
 		})
-		await dappBridge.send(session.walletPublicKey, 'tx-1', sealRequest(session.sharedKey, req))
+		await dappBridge.send(channels.toWallet, 'tx-1', sealRequest(session.sharedKey, req))
 
 		const response = await gotResponse
 		stopWallet()
@@ -101,4 +104,17 @@ describe('bridge transport (cross-device full flow)', () => {
 			expect(typeof (response.result as { txHash: string }).txHash).toBe('string')
 		}
 	}, 15_000)
+
+	it('rejects a non-https bridge URL (SSRF / forced-beacon guard)', () => {
+		expect(
+			() => new BridgeClient({ bridgeUrl: 'http://evil.internal', clientId: 'x' })
+		).toThrow(/https/)
+		expect(() => new BridgeClient({ bridgeUrl: 'file:///etc/passwd', clientId: 'x' })).toThrow()
+		expect(
+			() => new BridgeClient({ bridgeUrl: 'https://bridge.ama.one', clientId: 'x' })
+		).not.toThrow()
+		expect(
+			() => new BridgeClient({ bridgeUrl: 'http://127.0.0.1:8787', clientId: 'x' })
+		).not.toThrow()
+	})
 })
