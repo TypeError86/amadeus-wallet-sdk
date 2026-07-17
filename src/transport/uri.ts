@@ -25,6 +25,8 @@ export interface ConnectRequestParams {
 	exp: number
 	/** Same-device return target; omit for QR / bridge (cross-device). */
 	redirectLink?: string
+	/** Relay base URL for post-connect sealed messages (cross-device). */
+	bridgeUrl?: string
 }
 
 export interface ConnectResponseParams {
@@ -78,7 +80,8 @@ export function buildConnectUri(params: ConnectRequestParams): string {
 		challenge: params.challenge,
 		id: params.requestId,
 		exp: String(params.exp),
-		redirect: params.redirectLink
+		redirect: params.redirectLink,
+		bridge: params.bridgeUrl
 	})
 	return `${URI_SCHEME}://${CONNECT_PATH}?${query}`
 }
@@ -103,7 +106,8 @@ export function parseConnectUri(uri: string): ConnectRequestParams {
 		challenge: q.challenge,
 		requestId: q.id,
 		exp,
-		redirectLink: q.redirect || undefined
+		redirectLink: q.redirect || undefined,
+		bridgeUrl: q.bridge || undefined
 	}
 }
 

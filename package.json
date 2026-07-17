@@ -22,6 +22,7 @@
 	},
 	"files": [
 		"dist",
+		"bridge",
 		"README.md"
 	],
 	"scripts": {

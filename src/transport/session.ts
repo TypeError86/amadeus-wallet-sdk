@@ -33,6 +33,7 @@ export interface PendingConnect {
 	/** The dApp's ephemeral session keypair (secret stays local). */
 	dappKeypair: SessionKeypair
 	exp: number
+	bridgeUrl?: string
 }
 
 export interface EstablishedSession {
@@ -40,14 +41,20 @@ export interface EstablishedSession {
 	address: string
 	/** 32-byte symmetric key for sealing/opening envelopes. Keep in memory only. */
 	sharedKey: Uint8Array
+	/** The wallet's session key — the peer's bridge client id to send frames to. */
 	walletPublicKey: string
+	/** This dApp's session key — its own bridge client id to listen on. */
+	selfPublicKey: string
 	origin: string
+	/** Relay base URL for post-connect sealed messages, if provided. */
+	bridgeUrl?: string
 }
 
 /** dApp: create a connect request. Returns the URI to display and the pending state to keep. */
 export function createConnectRequest(options: {
 	origin: string
 	redirectLink?: string
+	bridgeUrl?: string
 	ttlSeconds?: number
 	now?: number
 }): { uri: string; pending: PendingConnect } {
@@ -63,11 +70,19 @@ export function createConnectRequest(options: {
 		challenge,
 		requestId,
 		exp,
-		redirectLink: options.redirectLink
+		redirectLink: options.redirectLink,
+		bridgeUrl: options.bridgeUrl
 	}
 	return {
 		uri: buildConnectUri(params),
-		pending: { requestId, challenge, origin: options.origin, dappKeypair, exp }
+		pending: {
+			requestId,
+			challenge,
+			origin: options.origin,
+			dappKeypair,
+			exp,
+			bridgeUrl: options.bridgeUrl
+		}
 	}
 }
 
@@ -99,7 +114,9 @@ export function completeConnect(
 		address: response.address,
 		sharedKey,
 		walletPublicKey: response.walletPublicKey,
-		origin: pending.origin
+		selfPublicKey: pending.dappKeypair.publicKey,
+		origin: pending.origin,
+		bridgeUrl: pending.bridgeUrl
 	}
 }
 
@@ -110,8 +127,12 @@ export interface WalletSession {
 	response: ConnectResponseParams
 	/** 32-byte symmetric key for sealing/opening envelopes. Keep in memory only. */
 	sharedKey: Uint8Array
-	/** The wallet's ephemeral session keypair for this dApp. */
+	/** The wallet's ephemeral session keypair for this dApp (its own bridge client id). */
 	walletKeypair: SessionKeypair
+	/** The dApp's session key — the peer's bridge client id to send frames to. */
+	peerPublicKey: string
+	/** Relay base URL for post-connect sealed messages, if the dApp supplied one. */
+	bridgeUrl?: string
 }
 
 /**
@@ -144,7 +165,9 @@ export function approveConnect(
 			signature
 		},
 		sharedKey,
-		walletKeypair
+		walletKeypair,
+		peerPublicKey: request.dappPublicKey,
+		bridgeUrl: request.bridgeUrl
 	}
 }
 
