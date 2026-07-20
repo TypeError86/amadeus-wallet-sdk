@@ -11,11 +11,10 @@
  * React Native (no EventSource/streaming dependency).
  */
 
-import { toBase58 } from '@amadeus-protocol/sdk'
+import { fromBase58, toBase58 } from '@amadeus-protocol/sdk'
 import { sha256 } from '@noble/hashes/sha2'
 
 import { concatBytes, utf8ToBytes } from '../bytes'
-import type { SealedEnvelope } from '../crypto/box'
 import { WalletSdkError } from '../errors'
 
 /** Max bytes we will read from a (possibly hostile) relay response. */
@@ -28,8 +27,13 @@ export interface BridgeFrame {
 	to: string
 	/** Unique frame id (also the request/response id) — for dedupe. */
 	id: string
-	/** The sealed, E2E-encrypted request or response. */
-	payload: SealedEnvelope
+	/**
+	 * The JSON payload. Post-connect this is a sealed (E2E-encrypted) envelope;
+	 * the ONE exception is the connect response (public handshake data, integrity
+	 * protected by the connect signature) sent on the connect channel before a
+	 * shared key exists.
+	 */
+	payload: unknown
 }
 
 /**
@@ -47,6 +51,21 @@ export function deriveBridgeChannels(sharedKey: Uint8Array): {
 		toWallet: channel('amadeus-bridge/to-wallet/v1'),
 		toDapp: channel('amadeus-bridge/to-dapp/v1')
 	}
+}
+
+/**
+ * Channel the dApp listens on for the CONNECT RESPONSE (cross-device / QR), before
+ * a shared key exists. Derived from the dApp's PUBLIC session key (which is in the
+ * connect QR), so the dApp can listen for it immediately. The response carried
+ * here is public handshake data whose integrity is verified by the connect
+ * signature (`verifyConnect`), so a forged response is rejected.
+ */
+export function deriveConnectChannel(dappPublicKeyBase58: string): string {
+	return toBase58(
+		sha256(
+			concatBytes(utf8ToBytes('amadeus-bridge/connect/v1'), fromBase58(dappPublicKeyBase58))
+		)
+	)
 }
 
 /**
@@ -94,8 +113,8 @@ export class BridgeClient {
 		this.pollWaitSeconds = options.pollWaitSeconds ?? 25
 	}
 
-	/** Send a sealed frame to a channel id. */
-	async send(to: string, id: string, payload: SealedEnvelope): Promise<void> {
+	/** Send a frame (sealed envelope, or plaintext connect response) to a channel id. */
+	async send(to: string, id: string, payload: unknown): Promise<void> {
 		const frame: BridgeFrame = { from: this.clientId, to, id, payload }
 		const res = await this.fetchImpl(`${this.bridgeUrl}/message?to=${encodeURIComponent(to)}`, {
 			method: 'POST',

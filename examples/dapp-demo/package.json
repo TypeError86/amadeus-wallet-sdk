@@ -1,0 +1,22 @@
+{
+	"name": "amadeus-dapp-demo",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Minimal browser dApp that connects to the Amadeus wallet by QR and requests a signature over the bridge.",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@amadeus-protocol/sdk": "^1.1.2",
+		"@amadeus-protocol/wallet-sdk": "file:../..",
+		"qrcode": "^1.5.4"
+	},
+	"devDependencies": {
+		"@types/qrcode": "^1.5.5",
+		"typescript": "^5.7.2",
+		"vite": "^5.4.0"
+	}
+}

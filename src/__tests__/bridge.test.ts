@@ -5,7 +5,8 @@ import type { Server } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createBridgeServer } from '../../bridge/server.mjs'
-import { BridgeClient, deriveBridgeChannels } from '../transport/bridge'
+import type { SealedEnvelope } from '../crypto/box'
+import { BridgeClient, deriveBridgeChannels, deriveConnectChannel } from '../transport/bridge'
 import {
 	createMemorySeenStore,
 	guardRequest,
@@ -17,7 +18,7 @@ import {
 	type WalletResponse
 } from '../transport/envelope'
 import { approveConnect, completeConnect, createConnectRequest } from '../transport/session'
-import { parseConnectUri } from '../transport/uri'
+import { parseConnectUri, type ConnectResponseParams } from '../transport/uri'
 import { handleRequest } from '../wallet/handler'
 
 describe('bridge transport (cross-device full flow)', () => {
@@ -68,7 +69,7 @@ describe('bridge transport (cross-device full flow)', () => {
 		// 3. Wallet listens: decrypt -> guard (expiry/replay) -> sign -> reply.
 		const seen = createMemorySeenStore()
 		const stopWallet = walletBridge.start(async (frame) => {
-			const req = openRequest(walletSession.sharedKey, frame.payload)
+			const req = openRequest(walletSession.sharedKey, frame.payload as SealedEnvelope)
 			guardRequest(req, seen)
 			const response = handleRequest(req, { seed, address })
 			await walletBridge.send(
@@ -82,7 +83,7 @@ describe('bridge transport (cross-device full flow)', () => {
 		let stopDapp = () => {}
 		const gotResponse = new Promise<WalletResponse>((resolve) => {
 			stopDapp = dappBridge.start((frame) => {
-				resolve(openResponse(session.sharedKey, frame.payload, 'tx-1'))
+				resolve(openResponse(session.sharedKey, frame.payload as SealedEnvelope, 'tx-1'))
 			})
 		})
 
@@ -104,6 +105,86 @@ describe('bridge transport (cross-device full flow)', () => {
 			expect(typeof (response.result as { txHash: string }).txHash).toBe('string')
 		}
 	}, 15_000)
+
+	it('full cross-device flow: connect response AND sign both over the relay', async () => {
+		const { privateKey: seed } = generateKeypair()
+		const address = derivePublicKeyFromSeedBase58(seed)
+
+		// dApp creates a connect request and listens on the connect channel (derived
+		// from its own public key — no shared key exists yet).
+		const { uri, pending } = createConnectRequest({
+			origin: 'https://hub.ama.one',
+			bridgeUrl: baseUrl
+		})
+		const dappConnect = new BridgeClient({
+			bridgeUrl: baseUrl,
+			clientId: deriveConnectChannel(pending.dappKeypair.publicKey),
+			pollWaitSeconds: 2
+		})
+		const gotConnect = new Promise<ConnectResponseParams>((resolve) => {
+			const stop = dappConnect.start((frame) => {
+				stop()
+				resolve(frame.payload as ConnectResponseParams)
+			})
+		})
+
+		// Wallet scans the QR, approves, and returns the (public) connect response
+		// over the connect channel.
+		const request = parseConnectUri(uri)
+		const walletSession = approveConnect(request, { seed, address })
+		const walletConnect = new BridgeClient({ bridgeUrl: baseUrl, clientId: 'wallet-tmp' })
+		await walletConnect.send(
+			deriveConnectChannel(request.dappPublicKey),
+			walletSession.response.requestId,
+			walletSession.response
+		)
+
+		// dApp receives the response and establishes the session.
+		const session = completeConnect(pending, await gotConnect)
+		expect(session.address).toBe(address)
+
+		// Now the sealed sign round-trip over the shared-key channels.
+		const channels = deriveBridgeChannels(session.sharedKey)
+		const walletBridge = new BridgeClient({
+			bridgeUrl: baseUrl,
+			clientId: channels.toWallet,
+			pollWaitSeconds: 2
+		})
+		const dappBridge = new BridgeClient({
+			bridgeUrl: baseUrl,
+			clientId: channels.toDapp,
+			pollWaitSeconds: 2
+		})
+		const seen = createMemorySeenStore()
+		const stopWallet = walletBridge.start(async (frame) => {
+			const req = openRequest(walletSession.sharedKey, frame.payload as SealedEnvelope)
+			guardRequest(req, seen)
+			const resp = handleRequest(req, { seed, address })
+			await walletBridge.send(
+				channels.toDapp,
+				req.id,
+				sealResponse(walletSession.sharedKey, resp)
+			)
+		})
+		let stopDapp = () => {}
+		const gotResp = new Promise<WalletResponse>((resolve) => {
+			stopDapp = dappBridge.start((frame) => {
+				resolve(openResponse(session.sharedKey, frame.payload as SealedEnvelope, 'tx-2'))
+			})
+		})
+		const req = makeRequest({
+			id: 'tx-2',
+			method: 'amadeus_signTransaction',
+			origin: session.origin,
+			params: { contract: 'Coin', method: 'transfer', args: [address, '1000000000', 'AMA'] }
+		})
+		await dappBridge.send(channels.toWallet, 'tx-2', sealRequest(session.sharedKey, req))
+
+		const finalResp = await gotResp
+		stopWallet()
+		stopDapp()
+		expect(finalResp.ok).toBe(true)
+	}, 20_000)
 
 	it('rejects a non-https bridge URL (SSRF / forced-beacon guard)', () => {
 		expect(
