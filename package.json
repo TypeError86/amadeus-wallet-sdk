@@ -50,6 +50,17 @@
 	],
 	"author": "Amadeus Protocol",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/amadeusprotocol/amadeus-wallet-sdk.git"
+	},
+	"homepage": "https://github.com/amadeusprotocol/amadeus-wallet-sdk#readme",
+	"bugs": {
+		"url": "https://github.com/amadeusprotocol/amadeus-wallet-sdk/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"dependencies": {
 		"@noble/ciphers": "^2.1.1",
 		"@noble/curves": "^1.9.1",
