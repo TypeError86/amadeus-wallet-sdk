@@ -103,8 +103,7 @@ async function signTransfer() {
 	txRow.style.display = 'none'
 
 	const channels = deriveBridgeChannels(session.sharedKey)
-	const id =
-		typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `req-${Date.now()}`
+	const id = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `req-${Date.now()}`
 
 	const request = makeRequest({
 		id,
@@ -123,7 +122,11 @@ async function signTransfer() {
 		(frame) => {
 			stop()
 			try {
-				const response = openResponse(session!.sharedKey, frame.payload as SealedEnvelope, id)
+				const response = openResponse(
+					session!.sharedKey,
+					frame.payload as SealedEnvelope,
+					id
+				)
 				if (response.ok) {
 					const result = response.result as { txHash: string }
 					txHashEl.textContent = result.txHash

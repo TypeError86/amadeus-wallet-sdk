@@ -5,16 +5,16 @@ signature — end to end over the bridge relay.
 
 ## Run it
 
-1. **Start the bridge relay** (from the wallet-sdk package root):
-   ```sh
-   node bridge/server.mjs        # listens on http://localhost:8787
-   ```
+1. **Start a bridge relay** — clone and run the [`amadeus-wallet-bridge`](https://github.com/TypeError86/amadeus-wallet-bridge) repo:
+    ```sh
+    npm install && npm start      # listens on http://localhost:8787
+    ```
 2. **Start the demo:**
-   ```sh
-   cd examples/dapp-demo
-   bun install
-   bun run dev                   # prints a http://localhost:5173 URL
-   ```
+    ```sh
+    cd examples/dapp-demo
+    bun install
+    bun run dev                   # prints a http://localhost:5173 URL
+    ```
 3. Open the URL, click **Connect wallet**, and **scan the QR** with the Amadeus
    wallet (Home → Connect) and approve.
 4. Click **Sign test transfer** and approve in the wallet — the returned tx hash

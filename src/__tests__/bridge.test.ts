@@ -4,7 +4,6 @@ import { derivePublicKeyFromSeedBase58, generateKeypair } from '@amadeus-protoco
 import type { Server } from 'node:http'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { createBridgeServer } from '../../bridge/server.mjs'
 import type { SealedEnvelope } from '../crypto/box'
 import { BridgeClient, deriveBridgeChannels, deriveConnectChannel } from '../transport/bridge'
 import {
@@ -20,13 +19,14 @@ import {
 import { approveConnect, completeConnect, createConnectRequest } from '../transport/session'
 import { parseConnectUri, type ConnectResponseParams } from '../transport/uri'
 import { handleRequest } from '../wallet/handler'
+import { createTestRelay } from './helpers/test-relay'
 
 describe('bridge transport (cross-device full flow)', () => {
 	let server: Server
 	let baseUrl: string
 
 	beforeAll(async () => {
-		server = createBridgeServer()
+		server = createTestRelay()
 		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
 		const { port } = server.address() as AddressInfo
 		baseUrl = `http://127.0.0.1:${port}`
