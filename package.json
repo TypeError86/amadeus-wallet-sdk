@@ -1,6 +1,6 @@
 {
 	"name": "@amadeus-protocol/wallet-sdk",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Shared dApp <-> wallet connection layer for Amadeus Protocol: BLS API-key tokens, transaction signing, message/connect signing, and the typed provider contract. One audited implementation for the wallet, the extension, and every dApp.",
 	"type": "module",
 	"sideEffects": false,

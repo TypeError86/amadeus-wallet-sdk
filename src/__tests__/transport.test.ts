@@ -1,6 +1,7 @@
 import { derivePublicKeyFromSeedBase58, generateKeypair, toBase58 } from '@amadeus-protocol/sdk'
 import { describe, expect, it } from 'vitest'
 
+import { DEFAULT_BRIDGE_URL } from '../constants'
 import {
 	createMemorySeenStore,
 	guardRequest,
@@ -44,6 +45,20 @@ describe('transport: connect handshake', () => {
 		expect(session.address).toBe(address)
 		// both sides independently derived the SAME symmetric key
 		expect(toBase58(session.sharedKey)).toBe(toBase58(wallet.sharedKey))
+	})
+
+	it('defaults bridgeUrl to the production relay, and respects an override', () => {
+		const { pending } = createConnectRequest({ origin: 'https://app.amadeus.xyz', now: FIXED_NOW })
+		expect(pending.bridgeUrl).toBe(DEFAULT_BRIDGE_URL)
+		expect(parseConnectUri(createConnectRequest({ origin: 'x', now: FIXED_NOW }).uri).bridgeUrl).toBe(
+			DEFAULT_BRIDGE_URL
+		)
+		const custom = createConnectRequest({
+			origin: 'x',
+			bridgeUrl: 'https://relay.example.com',
+			now: FIXED_NOW
+		})
+		expect(custom.pending.bridgeUrl).toBe('https://relay.example.com')
 	})
 
 	it('rejects a connect response bound to a different request', () => {

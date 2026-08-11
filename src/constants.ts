@@ -84,3 +84,10 @@ export const PROVIDER_EVENTS = [
 
 /** The valid networks the wallet exposes. */
 export const NETWORKS = ['mainnet', 'testnet', 'custom'] as const
+
+/**
+ * Default cross-device relay ("bridge") URL. dApps that don't pass their own
+ * `bridgeUrl` to `createConnectRequest` fall back to this. Must be https (the
+ * wallet rejects non-https bridge URLs via `assertAllowedBridgeUrl`).
+ */
+export const DEFAULT_BRIDGE_URL = 'https://bridge.ama.one'

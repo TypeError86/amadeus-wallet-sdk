@@ -17,6 +17,7 @@
 
 import { toBase58 } from '@amadeus-protocol/sdk'
 
+import { DEFAULT_BRIDGE_URL } from '../constants'
 import { randomBytes, randomId } from '../bytes'
 import { signConnect, verifyConnect, type ConnectTranscript } from '../crypto/connect'
 import { deriveSharedKey, generateSessionKeypair, type SessionKeypair } from '../crypto/box'
@@ -63,6 +64,8 @@ export function createConnectRequest(options: {
 	const requestId = randomId()
 	const nowSec = Math.floor((options.now ?? Date.now()) / 1000)
 	const exp = nowSec + (options.ttlSeconds ?? 120)
+	// Fall back to the production relay when the dApp doesn't pin its own.
+	const bridgeUrl = options.bridgeUrl ?? DEFAULT_BRIDGE_URL
 
 	const params: ConnectRequestParams = {
 		origin: options.origin,
@@ -71,7 +74,7 @@ export function createConnectRequest(options: {
 		requestId,
 		exp,
 		redirectLink: options.redirectLink,
-		bridgeUrl: options.bridgeUrl
+		bridgeUrl
 	}
 	return {
 		uri: buildConnectUri(params),
@@ -81,7 +84,7 @@ export function createConnectRequest(options: {
 			origin: options.origin,
 			dappKeypair,
 			exp,
-			bridgeUrl: options.bridgeUrl
+			bridgeUrl
 		}
 	}
 }
