@@ -49,7 +49,7 @@ function log(message: string) {
 }
 
 async function connect() {
-	bridgeUrl = bridgeInput.value.trim() || 'http://localhost:8787'
+	bridgeUrl = bridgeInput.value.trim() || 'https://bridge.ama.one'
 	stopConnectListener?.()
 
 	let request: { uri: string; pending: PendingConnect }
