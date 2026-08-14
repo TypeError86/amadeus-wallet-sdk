@@ -109,7 +109,11 @@ export class BridgeClient {
 		assertAllowedBridgeUrl(options.bridgeUrl)
 		this.bridgeUrl = options.bridgeUrl.replace(/\/$/, '')
 		this.clientId = options.clientId
-		this.fetchImpl = options.fetchImpl ?? fetch
+		// Bind to the global: a bare `fetch` reference called as `this.fetchImpl(...)`
+		// is detached from its global and throws "Illegal invocation" in browsers
+		// (WebIDL requires `this` to be the Window/WorkerGlobalScope). Node/RN tolerate
+		// it, which is why this only surfaces in a real browser dApp.
+		this.fetchImpl = options.fetchImpl ?? fetch.bind(globalThis)
 		this.pollWaitSeconds = options.pollWaitSeconds ?? 25
 	}
 
