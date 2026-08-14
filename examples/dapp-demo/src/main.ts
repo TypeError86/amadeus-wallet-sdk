@@ -28,6 +28,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 const bridgeInput = $<HTMLInputElement>('bridge')
 const connectBtn = $<HTMLButtonElement>('connect')
+const regenBtn = $<HTMLButtonElement>('regen')
 const signBtn = $<HTMLButtonElement>('sign')
 const qrBox = $<HTMLDivElement>('qr')
 const qrCanvas = $<HTMLCanvasElement>('qrcanvas')
@@ -155,4 +156,7 @@ async function signTransfer() {
 }
 
 connectBtn.addEventListener('click', () => void connect())
+// Regenerate: start a fresh connect request (new challenge + QR), e.g. after the
+// previous one expired. connect() tears down the old listener first.
+regenBtn.addEventListener('click', () => void connect())
 signBtn.addEventListener('click', () => void signTransfer())
