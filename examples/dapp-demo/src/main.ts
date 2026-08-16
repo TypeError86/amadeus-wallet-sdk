@@ -29,6 +29,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const bridgeInput = $<HTMLInputElement>('bridge')
 const connectBtn = $<HTMLButtonElement>('connect')
 const regenBtn = $<HTMLButtonElement>('regen')
+const copyBtn = $<HTMLButtonElement>('copylink')
 const signBtn = $<HTMLButtonElement>('sign')
 const qrBox = $<HTMLDivElement>('qr')
 const qrCanvas = $<HTMLCanvasElement>('qrcanvas')
@@ -37,6 +38,7 @@ const sessionCard = $<HTMLDivElement>('session-card')
 const accountEl = $<HTMLSpanElement>('account')
 const txRow = $<HTMLDivElement>('txrow')
 const txHashEl = $<HTMLSpanElement>('txhash')
+const statusEl = $<HTMLDivElement>('status')
 const logEl = $<HTMLPreElement>('log')
 
 const ORIGIN = window.location.origin
@@ -45,8 +47,10 @@ let session: EstablishedSession | null = null
 let bridgeUrl = ''
 let stopConnectListener: (() => void) | null = null
 
-function log(message: string) {
+type Status = 'idle' | 'wait' | 'ok' | 'err'
+function log(message: string, state: Status = 'idle') {
 	logEl.textContent = message
+	statusEl.dataset.state = state
 }
 
 async function connect() {
@@ -57,7 +61,7 @@ async function connect() {
 	try {
 		request = createConnectRequest({ origin: ORIGIN, bridgeUrl })
 	} catch (error) {
-		log(`Cannot start: ${(error as Error).message}`)
+		log(`Cannot start: ${(error as Error).message}`, 'err')
 		return
 	}
 	const { uri, pending } = request
@@ -80,13 +84,13 @@ async function connect() {
 				session = completeConnect(pending, frame.payload as ConnectResponseParams)
 				onConnected()
 			} catch (error) {
-				log(`Connect verification failed: ${(error as Error).message}`)
+				log(`Connect verification failed: ${(error as Error).message}`, 'err')
 			}
 		},
-		(error) => log(`Bridge error: ${String(error)}`)
+		(error) => log(`Bridge error: ${String(error)}`, 'err')
 	)
 
-	log('Scan the QR with the Amadeus wallet and approve the connection…')
+	log('Waiting — scan the QR with the Amadeus wallet and approve.', 'wait')
 }
 
 function onConnected() {
@@ -95,7 +99,7 @@ function onConnected() {
 	sessionCard.style.display = 'flex'
 	accountEl.textContent = session.address
 	signBtn.disabled = false
-	log(`Connected as ${session.address}`)
+	log(`Connected as ${session.address}`, 'ok')
 }
 
 async function signTransfer() {
@@ -132,26 +136,26 @@ async function signTransfer() {
 					const result = response.result as { txHash: string }
 					txHashEl.textContent = result.txHash
 					txRow.style.display = 'flex'
-					log('Signed! The wallet returned a transaction hash.')
+					log('Signed — the wallet returned a transaction hash.', 'ok')
 				} else {
-					log(`Rejected: ${response.error.code} — ${response.error.message}`)
+					log(`Rejected: ${response.error.code} — ${response.error.message}`, 'err')
 				}
 			} catch (error) {
-				log(`Bad response: ${(error as Error).message}`)
+				log(`Bad response: ${(error as Error).message}`, 'err')
 			} finally {
 				signBtn.disabled = false
 			}
 		},
-		(error) => log(`Bridge error: ${String(error)}`)
+		(error) => log(`Bridge error: ${String(error)}`, 'err')
 	)
 
 	try {
 		await client.send(channels.toWallet, id, sealRequest(session.sharedKey, request))
-		log('Sign request sent — approve it in the wallet…')
+		log('Sign request sent — approve it in the wallet…', 'wait')
 	} catch (error) {
 		stop()
 		signBtn.disabled = false
-		log(`Send failed: ${(error as Error).message}`)
+		log(`Send failed: ${(error as Error).message}`, 'err')
 	}
 }
 
@@ -159,4 +163,18 @@ connectBtn.addEventListener('click', () => void connect())
 // Regenerate: start a fresh connect request (new challenge + QR), e.g. after the
 // previous one expired. connect() tears down the old listener first.
 regenBtn.addEventListener('click', () => void connect())
+
+// Copy the connect link — useful for pasting into the wallet instead of scanning.
+copyBtn.addEventListener('click', () => {
+	const uri = linkEl.textContent ?? ''
+	if (!uri || !navigator.clipboard) return
+	void navigator.clipboard.writeText(uri).then(() => {
+		const prev = copyBtn.textContent
+		copyBtn.textContent = 'Copied'
+		window.setTimeout(() => {
+			copyBtn.textContent = prev
+		}, 1200)
+	})
+})
+
 signBtn.addEventListener('click', () => void signTransfer())
