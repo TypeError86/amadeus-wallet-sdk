@@ -326,6 +326,28 @@
 			.ok {
 				color: var(--ok);
 			}
+			.divider {
+				height: 1px;
+				background: var(--border);
+			}
+			.action-row {
+				display: flex;
+				gap: 0.5rem;
+			}
+			.action-row input {
+				flex: 1;
+				min-width: 0;
+			}
+			.action-row .btn-primary {
+				flex: none;
+			}
+			.result {
+				display: flex;
+				flex-direction: column;
+				gap: 0.6rem;
+				border-top: 1px solid var(--border);
+				padding-top: 0.9rem;
+			}
 
 			/* status */
 			.status {
@@ -438,9 +460,41 @@
 					</div>
 					<button id="disconnect" class="btn-ghost">Disconnect</button>
 				</div>
-				<button id="sign" class="btn-primary" disabled>Sign test transfer · 1 AMA → self</button>
-				<div class="row" id="txrow" style="display: none">
-					<span>Tx hash</span><span id="txhash" class="mono ok"></span>
+
+				<div class="divider"></div>
+
+				<!-- Transfer to any account -->
+				<div class="field">
+					<span class="field-label">Send a transfer</span>
+					<input id="recipient" placeholder="Recipient address (blank = self)" spellcheck="false" />
+					<div class="action-row">
+						<input id="amount" value="1" inputmode="decimal" aria-label="Amount in AMA" />
+						<button id="send-transfer" class="btn-primary">Send AMA</button>
+					</div>
+				</div>
+
+				<!-- Arbitrary contract call -->
+				<div class="field">
+					<span class="field-label">Sign a contract call</span>
+					<input id="sc-contract" value="Coin" placeholder="Contract" spellcheck="false" />
+					<input id="sc-method" value="transfer" placeholder="Method" spellcheck="false" />
+					<input id="sc-args" placeholder='Args — JSON array, e.g. ["addr","1000000000","AMA"]' spellcheck="false" />
+					<button id="sign-sc" class="btn-ghost">Sign &amp; submit contract call</button>
+				</div>
+
+				<!-- Other request types -->
+				<div class="field">
+					<span class="field-label">Other capabilities</span>
+					<button id="gen-apikey" class="btn-ghost">Request an API key</button>
+				</div>
+
+				<div class="result" id="result" style="display: none">
+					<div class="row" id="txrow" style="display: none">
+						<span>Tx hash</span><span id="txhash" class="mono ok"></span>
+					</div>
+					<div class="row" id="apirow" style="display: none">
+						<span>API key</span><span id="apikey" class="mono ok"></span>
+					</div>
 				</div>
 			</div>
 

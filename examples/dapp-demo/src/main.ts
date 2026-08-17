@@ -1,13 +1,11 @@
 /**
- * Minimal Amadeus dApp: connect by QR, then request a signature over the bridge.
- *
- * Flow (cross-device):
- *   createConnectRequest -> show QR  ─(wallet scans + approves)─►
- *   wallet returns the connect response on the connect channel ─►
- *   completeConnect -> session (shared key) ─►
- *   sealRequest(signTransaction) over the derived channel -> wallet signs -> txHash
+ * Amadeus dApp demo: connect by QR, then exercise the wallet's request types
+ * over the bridge — transfer to any account, an arbitrary contract call, and an
+ * API-key request. The wallet only SIGNS transactions (returns txPacked); the
+ * dApp submits them to the chosen node.
  */
 
+import { toAtomicAma } from '@amadeus-protocol/sdk'
 import {
 	BridgeClient,
 	completeConnect,
@@ -21,7 +19,8 @@ import {
 	type ConnectResponseParams,
 	type EstablishedSession,
 	type PendingConnect,
-	type SealedEnvelope
+	type SealedEnvelope,
+	type WalletRequest
 } from '@amadeus-protocol/wallet-sdk'
 import QRCode from 'qrcode'
 
@@ -36,14 +35,24 @@ const regenBtn = $<HTMLButtonElement>('regen')
 const copyBtn = $<HTMLButtonElement>('copylink')
 const disconnectBtn = $<HTMLButtonElement>('disconnect')
 const copyAcctBtn = $<HTMLButtonElement>('copyacct')
-const signBtn = $<HTMLButtonElement>('sign')
 const qrBox = $<HTMLDivElement>('qr')
 const qrCanvas = $<HTMLCanvasElement>('qrcanvas')
 const linkEl = $<HTMLAnchorElement>('link')
 const sessionCard = $<HTMLDivElement>('session-card')
 const accountEl = $<HTMLSpanElement>('account')
+const recipientInput = $<HTMLInputElement>('recipient')
+const amountInput = $<HTMLInputElement>('amount')
+const sendTransferBtn = $<HTMLButtonElement>('send-transfer')
+const scContractInput = $<HTMLInputElement>('sc-contract')
+const scMethodInput = $<HTMLInputElement>('sc-method')
+const scArgsInput = $<HTMLInputElement>('sc-args')
+const signScBtn = $<HTMLButtonElement>('sign-sc')
+const genApiBtn = $<HTMLButtonElement>('gen-apikey')
+const resultBox = $<HTMLDivElement>('result')
 const txRow = $<HTMLDivElement>('txrow')
 const txHashEl = $<HTMLSpanElement>('txhash')
+const apiRow = $<HTMLDivElement>('apirow')
+const apiKeyEl = $<HTMLSpanElement>('apikey')
 const statusEl = $<HTMLDivElement>('status')
 const logEl = $<HTMLPreElement>('log')
 
@@ -65,6 +74,11 @@ function log(message: string, state: Status = 'idle') {
 }
 
 const shortAddr = (a: string) => (a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a)
+const nodeUrl = () => nodeInput.value.trim() || NODE_URLS.mainnet
+const actionButtons = () => [sendTransferBtn, signScBtn, genApiBtn]
+const setBusy = (busy: boolean) => actionButtons().forEach((b) => (b.disabled = busy))
+const genId = () =>
+	typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `req-${Date.now()}`
 
 /** Network selector: mainnet/testnet lock the node URL; custom lets you type one. */
 function setNetwork(net: string) {
@@ -97,7 +111,7 @@ async function connect() {
 	const { uri, pending } = request
 
 	await QRCode.toCanvas(qrCanvas, uri, { width: 240, margin: 1 })
-	qrBox.style.display = 'block'
+	qrBox.style.display = 'flex'
 	linkEl.href = uri
 	linkEl.textContent = uri
 
@@ -129,7 +143,8 @@ function onConnected() {
 	connectCard.style.display = 'none'
 	sessionCard.style.display = 'flex'
 	accountEl.textContent = shortAddr(session.address)
-	signBtn.disabled = false
+	recipientInput.placeholder = `Recipient address (blank = ${shortAddr(session.address)})`
+	setBusy(false)
 	log(`Connected as ${shortAddr(session.address)}`, 'ok')
 }
 
@@ -139,80 +154,132 @@ function disconnect() {
 	session = null
 	sessionCard.style.display = 'none'
 	qrBox.style.display = 'none'
-	txRow.style.display = 'none'
-	signBtn.disabled = true
+	resultBox.style.display = 'none'
 	connectCard.style.display = 'flex'
 	log('Disconnected. Connect again to continue.', 'idle')
 }
 
-async function signTransfer() {
-	if (!session) return
-	signBtn.disabled = true
+function showTx(hash: string) {
+	txHashEl.textContent = hash
+	txRow.style.display = 'flex'
+	apiRow.style.display = 'none'
+	resultBox.style.display = 'flex'
+}
+
+function showApiKey(key: string) {
+	apiKeyEl.textContent = key
+	apiRow.style.display = 'flex'
 	txRow.style.display = 'none'
+	resultBox.style.display = 'flex'
+}
+
+/**
+ * Send one request to the wallet over the bridge and hand the (unsealed) result
+ * to `onResult`. Any request type works — the caller decides what to do with the
+ * result (submit a signed tx, show an API key, …).
+ */
+async function sendRequest(
+	method: WalletRequest['method'],
+	params: unknown,
+	onResult: (result: unknown) => void | Promise<void>
+) {
+	if (!session) return
+	setBusy(true)
+	resultBox.style.display = 'none'
 
 	const channels = deriveBridgeChannels(session.sharedKey)
-	const id = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `req-${Date.now()}`
-
-	const request = makeRequest({
-		id,
-		method: 'amadeus_signTransaction',
-		origin: ORIGIN,
-		params: {
-			contract: 'Coin',
-			method: 'transfer',
-			args: [session.address, '1000000000', 'AMA'] // 1 AMA (9 decimals) to self
-		}
-	})
-
-	const nodeUrl = nodeInput.value.trim() || 'https://mainnet-rpc.ama.one/api'
-
-	// Listen for the sealed response, then send the sealed request. The wallet only
-	// SIGNS (returns txPacked); the dApp submits it to a node — so do that here.
+	const id = genId()
 	const client = new BridgeClient({ bridgeUrl, clientId: channels.toDapp, pollWaitSeconds: 20 })
+
 	const stop = client.start(
 		async (frame) => {
 			stop()
 			try {
-				const response = openResponse(
-					session!.sharedKey,
-					frame.payload as SealedEnvelope,
-					id
-				)
+				const response = openResponse(session!.sharedKey, frame.payload as SealedEnvelope, id)
 				if (!response.ok) {
 					log(`Rejected: ${response.error.code} — ${response.error.message}`, 'err')
 					return
 				}
-				const result = response.result as { txHash: string; txPacked: number[] }
-				log('Signed — submitting to the chain…', 'wait')
-				await submitTransaction(result.txPacked, { nodeUrl, wait: true })
-				txHashEl.textContent = result.txHash
-				txRow.style.display = 'flex'
-				log('Sent — transaction submitted to the chain.', 'ok')
+				await onResult(response.result)
 			} catch (error) {
 				log(`Failed: ${(error as Error).message}`, 'err')
 			} finally {
-				signBtn.disabled = false
+				setBusy(false)
 			}
 		},
 		(error) => log(`Bridge error: ${String(error)}`, 'err')
 	)
 
 	try {
+		const request = makeRequest({ id, method, origin: ORIGIN, params })
 		await client.send(channels.toWallet, id, sealRequest(session.sharedKey, request))
-		log('Sign request sent — approve it in the wallet…', 'wait')
+		log('Request sent — approve it in the wallet…', 'wait')
 	} catch (error) {
 		stop()
-		signBtn.disabled = false
+		setBusy(false)
 		log(`Send failed: ${(error as Error).message}`, 'err')
 	}
 }
 
+async function submitSigned(result: unknown, sentMessage: string) {
+	const r = result as { txHash: string; txPacked: number[] }
+	log('Signed — submitting to the chain…', 'wait')
+	await submitTransaction(r.txPacked, { nodeUrl: nodeUrl(), wait: true })
+	showTx(r.txHash)
+	log(sentMessage, 'ok')
+}
+
+function sendTransfer() {
+	if (!session) return
+	const recipient = recipientInput.value.trim() || session.address
+	let atomic: string
+	try {
+		atomic = String(toAtomicAma(amountInput.value.trim() || '1'))
+	} catch {
+		log('Enter a valid amount.', 'err')
+		return
+	}
+	void sendRequest(
+		'amadeus_signTransaction',
+		{ contract: 'Coin', method: 'transfer', args: [recipient, atomic, 'AMA'] },
+		(result) => submitSigned(result, 'Sent — transfer submitted to the chain.')
+	)
+}
+
+function signContractCall() {
+	if (!session) return
+	const contract = scContractInput.value.trim()
+	const method = scMethodInput.value.trim()
+	if (!contract || !method) {
+		log('Contract and method are required.', 'err')
+		return
+	}
+	let args: unknown[]
+	try {
+		args = JSON.parse(scArgsInput.value.trim() || '[]')
+		if (!Array.isArray(args)) throw new Error('not an array')
+	} catch {
+		log('Args must be a JSON array, e.g. ["addr","1000000000","AMA"].', 'err')
+		return
+	}
+	void sendRequest(
+		'amadeus_signTransaction',
+		{ contract, method, args },
+		(result) => submitSigned(result, 'Sent — contract call submitted to the chain.')
+	)
+}
+
+function requestApiKey() {
+	if (!session) return
+	void sendRequest('amadeus_generateApiKey', { aud: ORIGIN, exp_in: 3600 }, (result) => {
+		showApiKey((result as { apiKey: string }).apiKey)
+		log('API key issued by the wallet.', 'ok')
+	})
+}
+
 connectBtn.addEventListener('click', () => void connect())
-// Regenerate: start a fresh connect request (new challenge + QR), e.g. after the
-// previous one expired. connect() tears down the old listener first.
 regenBtn.addEventListener('click', () => void connect())
 
-// Copy the connect link — useful for pasting into the wallet instead of scanning.
 copyBtn.addEventListener('click', () => {
 	const uri = linkEl.textContent ?? ''
 	if (!uri || !navigator.clipboard) return
@@ -243,4 +310,6 @@ copyAcctBtn.addEventListener('click', () => {
 	})
 })
 
-signBtn.addEventListener('click', () => void signTransfer())
+sendTransferBtn.addEventListener('click', sendTransfer)
+signScBtn.addEventListener('click', signContractCall)
+genApiBtn.addEventListener('click', requestApiKey)
