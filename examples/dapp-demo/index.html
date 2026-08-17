@@ -12,7 +12,6 @@
 				--panel: #14161b;
 				--panel-2: #191c22;
 				--border: #262a31;
-				--border-soft: #1e222840;
 				--ink: #e9edf1;
 				--dim: #8c94a1;
 				--faint: #5b6270;
@@ -24,8 +23,7 @@
 				--err: #e57373;
 				--radius: 16px;
 				--mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
-				--sans:
-					-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+				--sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 			}
 			* {
 				box-sizing: border-box;
@@ -54,29 +52,23 @@
 				gap: 1.15rem;
 			}
 
-			/* ---- header ---- */
+			/* header */
 			header {
 				display: flex;
 				align-items: center;
-				justify-content: space-between;
-				gap: 1rem;
+				gap: 0.7rem;
 				margin-bottom: 0.15rem;
 			}
-			.brand {
-				display: flex;
-				align-items: center;
-				gap: 0.6rem;
-			}
 			.mark {
-				height: 30px;
-				width: 30px;
+				height: 32px;
+				width: 32px;
 				border-radius: 9px;
 				display: grid;
 				place-items: center;
 				background: linear-gradient(150deg, var(--accent), #2f8f8b);
 				color: var(--accent-ink);
 				font-weight: 800;
-				font-size: 1rem;
+				font-size: 1.05rem;
 				box-shadow: 0 4px 14px -4px var(--accent);
 			}
 			h1 {
@@ -86,35 +78,14 @@
 				margin: 0;
 				line-height: 1.1;
 			}
-			.brand .tag {
+			.tag {
 				display: block;
-				font-size: 0.72rem;
+				font-size: 0.75rem;
 				color: var(--dim);
 				font-weight: 450;
 			}
-			.chip {
-				display: inline-flex;
-				align-items: center;
-				gap: 0.4rem;
-				font-size: 0.68rem;
-				font-weight: 600;
-				letter-spacing: 0.06em;
-				text-transform: uppercase;
-				color: var(--dim);
-				background: var(--panel);
-				border: 1px solid var(--border);
-				border-radius: 999px;
-				padding: 0.32rem 0.6rem;
-			}
-			.chip .dot {
-				height: 6px;
-				width: 6px;
-				border-radius: 50%;
-				background: var(--accent);
-				box-shadow: 0 0 0 3px var(--accent-soft);
-			}
 
-			/* ---- cards ---- */
+			/* cards */
 			.card {
 				background: linear-gradient(180deg, var(--panel-2), var(--panel));
 				border: 1px solid var(--border);
@@ -122,8 +93,13 @@
 				padding: 1.2rem;
 				display: flex;
 				flex-direction: column;
-				gap: 0.95rem;
+				gap: 1rem;
 				box-shadow: 0 1px 0 #ffffff08 inset, 0 12px 30px -22px #000;
+			}
+			.field {
+				display: flex;
+				flex-direction: column;
+				gap: 0.45rem;
 			}
 			.field-label {
 				font-size: 0.7rem;
@@ -131,11 +107,6 @@
 				letter-spacing: 0.07em;
 				text-transform: uppercase;
 				color: var(--faint);
-			}
-			label {
-				display: flex;
-				flex-direction: column;
-				gap: 0.45rem;
 			}
 			input {
 				background: var(--bg-soft);
@@ -145,14 +116,48 @@
 				padding: 0.62rem 0.75rem;
 				font: 0.85rem var(--mono);
 				transition: border-color 0.15s ease, box-shadow 0.15s ease;
+				width: 100%;
 			}
 			input:focus-visible {
 				outline: none;
 				border-color: var(--accent);
 				box-shadow: 0 0 0 3px var(--accent-soft);
 			}
+			input:read-only {
+				color: var(--dim);
+				cursor: default;
+			}
 
-			/* ---- buttons ---- */
+			/* segmented network selector */
+			.segmented {
+				display: flex;
+				gap: 4px;
+				background: var(--bg-soft);
+				border: 1px solid var(--border);
+				border-radius: 11px;
+				padding: 4px;
+			}
+			.seg {
+				flex: 1;
+				background: transparent;
+				border: 0;
+				color: var(--dim);
+				padding: 0.45rem 0.3rem;
+				border-radius: 8px;
+				font: 600 0.82rem var(--sans);
+				cursor: pointer;
+				transition: background 0.15s ease, color 0.15s ease;
+			}
+			.seg:hover {
+				color: var(--ink);
+			}
+			.seg.active {
+				background: var(--panel-2);
+				color: var(--ink);
+				box-shadow: 0 1px 3px #0007;
+			}
+
+			/* buttons */
 			button {
 				font: inherit;
 				cursor: pointer;
@@ -193,13 +198,12 @@
 				box-shadow: none;
 			}
 
-			/* ---- QR ---- */
+			/* QR */
 			#qr {
 				display: none;
 				flex-direction: column;
 				align-items: center;
 				gap: 0.85rem;
-				padding-top: 0.2rem;
 			}
 			.qr-tile {
 				background: #fff;
@@ -217,28 +221,86 @@
 				color: var(--dim);
 				text-align: center;
 				max-width: 30ch;
+				margin: 0;
 			}
 			.qr-actions {
 				display: flex;
 				gap: 0.5rem;
-				align-items: center;
-				flex-wrap: wrap;
 				justify-content: center;
 			}
 			a#link {
 				color: var(--faint);
-				font: 0.68rem var(--mono);
-				word-break: break-all;
+				font: 0.7rem var(--mono);
 				text-decoration: none;
 				max-width: 100%;
-				text-align: center;
-				line-height: 1.4;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				background: var(--bg-soft);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				padding: 0.4rem 0.6rem;
 			}
 			a#link:hover {
 				color: var(--dim);
 			}
 
-			/* ---- session + rows ---- */
+			/* session */
+			.session-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.75rem;
+			}
+			.acct {
+				display: flex;
+				align-items: center;
+				gap: 0.7rem;
+				min-width: 0;
+			}
+			.avatar {
+				height: 38px;
+				width: 38px;
+				border-radius: 50%;
+				flex: none;
+				display: grid;
+				place-items: center;
+				background: var(--accent-soft);
+				color: var(--accent);
+				font-weight: 700;
+			}
+			.acct-meta {
+				min-width: 0;
+				display: flex;
+				flex-direction: column;
+				gap: 1px;
+			}
+			.acct-label {
+				font-size: 0.68rem;
+				font-weight: 600;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--faint);
+			}
+			.acct-value {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
+			}
+			#account {
+				font: 0.86rem var(--mono);
+				color: var(--ink);
+			}
+			.copy-icon {
+				background: none;
+				border: 0;
+				color: var(--faint);
+				padding: 2px;
+				font-size: 0.72rem;
+			}
+			.copy-icon:hover {
+				color: var(--accent);
+			}
 			.row {
 				display: flex;
 				justify-content: space-between;
@@ -263,7 +325,7 @@
 				color: var(--ok);
 			}
 
-			/* ---- status ---- */
+			/* status */
 			.status {
 				display: flex;
 				align-items: flex-start;
@@ -272,8 +334,6 @@
 				border: 1px solid var(--border);
 				border-radius: 12px;
 				padding: 0.75rem 0.85rem;
-				font-size: 0.8rem;
-				color: var(--dim);
 			}
 			.status .dot {
 				margin-top: 0.4rem;
@@ -288,25 +348,23 @@
 				margin: 0;
 				font: 0.8rem/1.5 var(--sans);
 				white-space: pre-wrap;
-				color: inherit;
+				color: var(--dim);
 			}
-			.status[data-state='wait'] {
+			.status[data-state='wait'] #log,
+			.status[data-state='ok'] #log {
 				color: var(--ink);
+			}
+			.status[data-state='err'] #log {
+				color: #f0b4b4;
 			}
 			.status[data-state='wait'] .dot {
 				background: var(--warn);
 				box-shadow: 0 0 0 3px #e0a44a22;
 				animation: pulse 1.4s ease-in-out infinite;
 			}
-			.status[data-state='ok'] {
-				color: var(--ink);
-			}
 			.status[data-state='ok'] .dot {
 				background: var(--ok);
 				box-shadow: 0 0 0 3px #4ccf9a22;
-			}
-			.status[data-state='err'] {
-				color: #f0b4b4;
 			}
 			.status[data-state='err'] .dot {
 				background: var(--err);
@@ -328,25 +386,29 @@
 	<body>
 		<main>
 			<header>
-				<div class="brand">
-					<span class="mark">A</span>
-					<span>
-						<h1>Amadeus dApp Demo</h1>
-						<span class="tag">Connect &amp; sign over the bridge</span>
-					</span>
-				</div>
-				<span class="chip"><span class="dot"></span>Testnet</span>
+				<span class="mark">A</span>
+				<span>
+					<h1>Amadeus dApp Demo</h1>
+					<span class="tag">Connect &amp; sign over the bridge</span>
+				</span>
 			</header>
 
-			<div class="card">
-				<label>
+			<div class="card" id="connect-card">
+				<div class="field">
 					<span class="field-label">Bridge relay</span>
 					<input id="bridge" value="https://bridge.ama.one" spellcheck="false" />
-				</label>
-				<label>
-					<span class="field-label">Node (RPC) — where the signed tx is submitted</span>
-					<input id="node" value="https://mainnet-rpc.ama.one/api" spellcheck="false" />
-				</label>
+				</div>
+
+				<div class="field">
+					<span class="field-label">Network</span>
+					<div class="segmented" id="netseg">
+						<button type="button" class="seg active" data-net="mainnet">Mainnet</button>
+						<button type="button" class="seg" data-net="testnet">Testnet</button>
+						<button type="button" class="seg" data-net="custom">Custom</button>
+					</div>
+					<input id="node" value="https://mainnet-rpc.ama.one/api" spellcheck="false" readonly />
+				</div>
+
 				<button id="connect" class="btn-primary">Connect wallet</button>
 
 				<div id="qr">
@@ -361,7 +423,19 @@
 			</div>
 
 			<div class="card" id="session-card" style="display: none">
-				<div class="row"><span>Connected</span><span id="account" class="mono ok"></span></div>
+				<div class="session-head">
+					<div class="acct">
+						<span class="avatar">A</span>
+						<span class="acct-meta">
+							<span class="acct-label">Connected account</span>
+							<span class="acct-value">
+								<span id="account"></span>
+								<button id="copyacct" class="copy-icon" title="Copy address">Copy</button>
+							</span>
+						</span>
+					</div>
+					<button id="disconnect" class="btn-ghost">Disconnect</button>
+				</div>
 				<button id="sign" class="btn-primary" disabled>Sign test transfer · 1 AMA → self</button>
 				<div class="row" id="txrow" style="display: none">
 					<span>Tx hash</span><span id="txhash" class="mono ok"></span>
@@ -370,7 +444,7 @@
 
 			<div class="status" id="status" data-state="idle">
 				<span class="dot"></span>
-				<pre id="log">Idle — enter a relay and connect.</pre>
+				<pre id="log">Idle — pick a network and connect.</pre>
 			</div>
 		</main>
 		<script type="module" src="/src/main.ts"></script>

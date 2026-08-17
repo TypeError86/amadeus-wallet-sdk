@@ -29,9 +29,13 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 const bridgeInput = $<HTMLInputElement>('bridge')
 const nodeInput = $<HTMLInputElement>('node')
+const netseg = $<HTMLDivElement>('netseg')
+const connectCard = $<HTMLDivElement>('connect-card')
 const connectBtn = $<HTMLButtonElement>('connect')
 const regenBtn = $<HTMLButtonElement>('regen')
 const copyBtn = $<HTMLButtonElement>('copylink')
+const disconnectBtn = $<HTMLButtonElement>('disconnect')
+const copyAcctBtn = $<HTMLButtonElement>('copyacct')
 const signBtn = $<HTMLButtonElement>('sign')
 const qrBox = $<HTMLDivElement>('qr')
 const qrCanvas = $<HTMLCanvasElement>('qrcanvas')
@@ -45,6 +49,11 @@ const logEl = $<HTMLPreElement>('log')
 
 const ORIGIN = window.location.origin
 
+const NODE_URLS: Record<string, string> = {
+	mainnet: 'https://mainnet-rpc.ama.one/api',
+	testnet: 'https://testnet-rpc.ama.one/api'
+}
+
 let session: EstablishedSession | null = null
 let bridgeUrl = ''
 let stopConnectListener: (() => void) | null = null
@@ -53,6 +62,25 @@ type Status = 'idle' | 'wait' | 'ok' | 'err'
 function log(message: string, state: Status = 'idle') {
 	logEl.textContent = message
 	statusEl.dataset.state = state
+}
+
+const shortAddr = (a: string) => (a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a)
+
+/** Network selector: mainnet/testnet lock the node URL; custom lets you type one. */
+function setNetwork(net: string) {
+	for (const b of netseg.querySelectorAll<HTMLButtonElement>('.seg')) {
+		b.classList.toggle('active', b.dataset.net === net)
+	}
+	if (net === 'custom') {
+		nodeInput.readOnly = false
+		if (nodeInput.value === NODE_URLS.mainnet || nodeInput.value === NODE_URLS.testnet) {
+			nodeInput.value = ''
+		}
+		nodeInput.focus()
+	} else {
+		nodeInput.readOnly = true
+		nodeInput.value = NODE_URLS[net]
+	}
 }
 
 async function connect() {
@@ -98,10 +126,23 @@ async function connect() {
 function onConnected() {
 	if (!session) return
 	qrBox.style.display = 'none'
+	connectCard.style.display = 'none'
 	sessionCard.style.display = 'flex'
-	accountEl.textContent = session.address
+	accountEl.textContent = shortAddr(session.address)
 	signBtn.disabled = false
-	log(`Connected as ${session.address}`, 'ok')
+	log(`Connected as ${shortAddr(session.address)}`, 'ok')
+}
+
+function disconnect() {
+	stopConnectListener?.()
+	stopConnectListener = null
+	session = null
+	sessionCard.style.display = 'none'
+	qrBox.style.display = 'none'
+	txRow.style.display = 'none'
+	signBtn.disabled = true
+	connectCard.style.display = 'flex'
+	log('Disconnected. Connect again to continue.', 'idle')
 }
 
 async function signTransfer() {
@@ -180,6 +221,24 @@ copyBtn.addEventListener('click', () => {
 		copyBtn.textContent = 'Copied'
 		window.setTimeout(() => {
 			copyBtn.textContent = prev
+		}, 1200)
+	})
+})
+
+netseg.addEventListener('click', (e) => {
+	const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.seg')
+	if (btn?.dataset.net) setNetwork(btn.dataset.net)
+})
+
+disconnectBtn.addEventListener('click', disconnect)
+
+copyAcctBtn.addEventListener('click', () => {
+	if (!session || !navigator.clipboard) return
+	void navigator.clipboard.writeText(session.address).then(() => {
+		const prev = copyAcctBtn.textContent
+		copyAcctBtn.textContent = 'Copied'
+		window.setTimeout(() => {
+			copyAcctBtn.textContent = prev
 		}, 1200)
 	})
 })
