@@ -17,6 +17,7 @@ import {
 	makeRequest,
 	openResponse,
 	sealRequest,
+	submitTransaction,
 	type ConnectResponseParams,
 	type EstablishedSession,
 	type PendingConnect,
@@ -27,6 +28,7 @@ import QRCode from 'qrcode'
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
 const bridgeInput = $<HTMLInputElement>('bridge')
+const nodeInput = $<HTMLInputElement>('node')
 const connectBtn = $<HTMLButtonElement>('connect')
 const regenBtn = $<HTMLButtonElement>('regen')
 const copyBtn = $<HTMLButtonElement>('copylink')
@@ -121,10 +123,13 @@ async function signTransfer() {
 		}
 	})
 
-	// Listen for the sealed response, then send the sealed request.
+	const nodeUrl = nodeInput.value.trim() || 'https://mainnet-rpc.ama.one/api'
+
+	// Listen for the sealed response, then send the sealed request. The wallet only
+	// SIGNS (returns txPacked); the dApp submits it to a node — so do that here.
 	const client = new BridgeClient({ bridgeUrl, clientId: channels.toDapp, pollWaitSeconds: 20 })
 	const stop = client.start(
-		(frame) => {
+		async (frame) => {
 			stop()
 			try {
 				const response = openResponse(
@@ -132,16 +137,18 @@ async function signTransfer() {
 					frame.payload as SealedEnvelope,
 					id
 				)
-				if (response.ok) {
-					const result = response.result as { txHash: string }
-					txHashEl.textContent = result.txHash
-					txRow.style.display = 'flex'
-					log('Signed — the wallet returned a transaction hash.', 'ok')
-				} else {
+				if (!response.ok) {
 					log(`Rejected: ${response.error.code} — ${response.error.message}`, 'err')
+					return
 				}
+				const result = response.result as { txHash: string; txPacked: number[] }
+				log('Signed — submitting to the chain…', 'wait')
+				await submitTransaction(result.txPacked, { nodeUrl, wait: true })
+				txHashEl.textContent = result.txHash
+				txRow.style.display = 'flex'
+				log('Sent — transaction submitted to the chain.', 'ok')
 			} catch (error) {
-				log(`Bad response: ${(error as Error).message}`, 'err')
+				log(`Failed: ${(error as Error).message}`, 'err')
 			} finally {
 				signBtn.disabled = false
 			}
