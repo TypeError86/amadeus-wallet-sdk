@@ -411,6 +411,79 @@
 				text-decoration: underline;
 			}
 
+			/* accounts */
+			.accounts {
+				display: flex;
+				flex-direction: column;
+				gap: 0.4rem;
+			}
+			.acct-row {
+				display: flex;
+				align-items: center;
+				gap: 0.7rem;
+				width: 100%;
+				text-align: left;
+				background: var(--bg-soft);
+				border: 1px solid var(--border);
+				border-radius: 12px;
+				padding: 0.6rem 0.75rem;
+				cursor: pointer;
+				transition: border-color 0.15s ease, background 0.15s ease;
+			}
+			.acct-row:hover {
+				border-color: var(--faint);
+			}
+			.acct-row.selected {
+				border-color: var(--accent);
+				background: var(--accent-soft);
+			}
+			.acct-radio {
+				height: 16px;
+				width: 16px;
+				border-radius: 50%;
+				border: 2px solid var(--faint);
+				flex: none;
+				display: grid;
+				place-items: center;
+			}
+			.acct-row.selected .acct-radio {
+				border-color: var(--accent);
+			}
+			.acct-row.selected .acct-radio::after {
+				content: '';
+				height: 7px;
+				width: 7px;
+				border-radius: 50%;
+				background: var(--accent);
+			}
+			.acct-info {
+				display: flex;
+				flex-direction: column;
+				min-width: 0;
+				flex: 1;
+			}
+			.acct-name {
+				font-size: 0.85rem;
+				font-weight: 600;
+				color: var(--ink);
+			}
+			.acct-addr {
+				font: 0.72rem var(--mono);
+				color: var(--dim);
+			}
+			.acct-bal {
+				font-size: 0.8rem;
+				font-weight: 600;
+				color: var(--ink);
+				text-align: right;
+				white-space: nowrap;
+			}
+			.acct-bal .u {
+				color: var(--dim);
+				font-weight: 400;
+				font-size: 0.72rem;
+			}
+
 			/* status */
 			.status {
 				display: flex;
@@ -510,18 +583,10 @@
 
 			<div class="card" id="session-card" style="display: none">
 				<div class="session-head">
-					<div class="acct">
-						<span class="avatar">A</span>
-						<span class="acct-meta">
-							<span class="acct-label">Connected account</span>
-							<span class="acct-value">
-								<span id="account"></span>
-								<button id="copyacct" class="copy-icon" title="Copy address">Copy</button>
-							</span>
-						</span>
-					</div>
+					<span class="field-label" id="accounts-label">Wallet accounts</span>
 					<button id="disconnect" class="btn-ghost">Disconnect</button>
 				</div>
+				<div class="accounts" id="accounts"></div>
 
 				<div class="divider"></div>
 
