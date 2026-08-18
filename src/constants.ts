@@ -28,6 +28,15 @@ export const API_KEY_DST = 'AMADEUS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_APIKEY_'
  */
 export const CONNECT_DST = 'AMADEUS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_CONNECT_'
 
+/**
+ * Arbitrary-message ("personal sign") signatures. NEW in this package — no prior
+ * verifier, so no backward-compat constraint. Its distinct DST is the safety
+ * guarantee: a message signed here can NEVER verify as a transaction (`TX_DST`),
+ * an API key (`API_KEY_DST`), or a connect proof, so a dApp can't trick a user
+ * into blind-signing a payload that is secretly valid under another protocol.
+ */
+export const MESSAGE_DST = 'AMADEUS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_MSG_'
+
 /** Byte lengths of the Amadeus BLS12-381 "long-signature" variant (G1 pk / G2 sig). */
 export const PUBLIC_KEY_BYTE_LENGTH = 48
 export const SIGNATURE_BYTE_LENGTH = 96
@@ -40,6 +49,13 @@ export const SEED_BYTE_LENGTH = 64
  * for a multi-hundred-char audience claim.
  */
 export const MAX_API_KEY_STRING_LENGTH = 1024
+
+/**
+ * Hard cap on a to-be-signed message (UTF-8 chars). Bounds untrusted input shown
+ * in the approval UI and hashed for signing; generous enough for SIWE-style
+ * multi-line login messages while refusing a megabyte blob.
+ */
+export const MAX_MESSAGE_LENGTH = 4096
 
 /** x25519 / xchacha20-poly1305 session-box parameters. */
 export const SESSION_PUBLIC_KEY_BYTE_LENGTH = 32

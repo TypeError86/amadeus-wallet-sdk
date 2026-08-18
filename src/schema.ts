@@ -9,7 +9,12 @@
 import { fromBase58 } from '@amadeus-protocol/sdk'
 import { z } from 'zod'
 
-import { NETWORKS, PUBLIC_KEY_BYTE_LENGTH, SESSION_PUBLIC_KEY_BYTE_LENGTH } from './constants'
+import {
+	MAX_MESSAGE_LENGTH,
+	NETWORKS,
+	PUBLIC_KEY_BYTE_LENGTH,
+	SESSION_PUBLIC_KEY_BYTE_LENGTH
+} from './constants'
 
 /** A Base58 string that decodes to exactly `length` bytes. */
 function base58OfLength(length: number, label: string) {
@@ -55,6 +60,11 @@ export const generateApiKeyRequestSchema = z.object({
 	exp_in: z.number().int().positive()
 })
 
+/** `signMessage` params — an arbitrary UTF-8 message, bounded for safety. */
+export const signMessageRequestSchema = z.object({
+	message: z.string().min(1).max(MAX_MESSAGE_LENGTH)
+})
+
 /** The connect transcript fields carried by a deep link / QR payload. */
 export const connectTranscriptSchema = z.object({
 	origin: originSchema,
@@ -66,4 +76,5 @@ export const connectTranscriptSchema = z.object({
 
 export type SignTransactionRequestInput = z.infer<typeof signTransactionRequestSchema>
 export type GenerateApiKeyRequestInput = z.infer<typeof generateApiKeyRequestSchema>
+export type SignMessageRequestInput = z.infer<typeof signMessageRequestSchema>
 export type ConnectTranscriptInput = z.infer<typeof connectTranscriptSchema>

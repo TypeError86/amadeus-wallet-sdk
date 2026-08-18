@@ -18,6 +18,7 @@ export * from './schema'
 // Crypto
 export * from './crypto/bls'
 export * from './crypto/apikey'
+export * from './crypto/message'
 export * from './crypto/connect'
 export * from './crypto/box'
 

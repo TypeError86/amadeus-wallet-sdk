@@ -7,6 +7,7 @@ import {
 import { describe, expect, it, vi } from 'vitest'
 
 import { verifyApiKey } from '../crypto/apikey'
+import { verifyMessage } from '../crypto/message'
 import { makeRequest } from '../transport/envelope'
 import { handleRequest } from '../wallet/handler'
 
@@ -75,6 +76,40 @@ describe('wallet handler', () => {
 			expect(verified.valid).toBe(true)
 			if (verified.valid) expect(verified.address).toBe(address)
 		}
+	})
+
+	it('handles amadeus_signMessage (verifiable signature)', () => {
+		const req = makeRequest({
+			id: '6',
+			method: 'amadeus_signMessage',
+			origin: 'https://x',
+			params: { message: 'Sign in to Amadeus @ 1780000000' },
+			now: FIXED_NOW
+		})
+		const res = handleRequest(req, ctx)
+		expect(res.ok).toBe(true)
+		if (res.ok) {
+			const { message, signature, address: signer } = res.result as {
+				message: string
+				signature: string
+				address: string
+			}
+			expect(signer).toBe(address)
+			expect(verifyMessage({ message, signature, address })).toBe(true)
+		}
+	})
+
+	it('rejects an empty amadeus_signMessage', () => {
+		const req = makeRequest({
+			id: '7',
+			method: 'amadeus_signMessage',
+			origin: 'https://x',
+			params: { message: '' },
+			now: FIXED_NOW
+		})
+		const res = handleRequest(req, ctx)
+		expect(res.ok).toBe(false)
+		if (!res.ok) expect(res.error.code).toBe('INVALID_ARGUMENT')
 	})
 
 	it('returns an error response (never throws) on bad params', () => {

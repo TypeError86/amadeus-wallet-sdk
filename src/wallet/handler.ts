@@ -11,8 +11,13 @@
 
 import { PROTOCOL_VERSION } from '../constants'
 import { generateApiKey } from '../crypto/apikey'
+import { signMessage } from '../crypto/message'
 import { WalletSdkError } from '../errors'
-import { generateApiKeyRequestSchema, signTransactionRequestSchema } from '../schema'
+import {
+	generateApiKeyRequestSchema,
+	signMessageRequestSchema,
+	signTransactionRequestSchema
+} from '../schema'
 import { signTransaction } from '../tx'
 import type { WalletRequest, WalletResponse } from '../transport/envelope'
 
@@ -70,12 +75,14 @@ export function handleRequest(request: WalletRequest, ctx: WalletHandlerContext)
 			}
 			case 'amadeus_getAccounts':
 				return ok(request.id, { accounts: [ctx.address] })
-			case 'amadeus_signMessage':
-				// Structured, non-oracle message signing is not exposed in v0.1.
-				throw new WalletSdkError(
-					'INVALID_ARGUMENT',
-					'amadeus_signMessage is not supported yet'
-				)
+			case 'amadeus_signMessage': {
+				const parsed = signMessageRequestSchema.safeParse(request.params)
+				if (!parsed.success) {
+					throw new WalletSdkError('INVALID_ARGUMENT', 'invalid signMessage params')
+				}
+				const signed = signMessage({ seed: ctx.seed, message: parsed.data.message })
+				return ok(request.id, signed)
+			}
 			case 'amadeus_switchNetwork':
 				throw new WalletSdkError(
 					'INVALID_ARGUMENT',
