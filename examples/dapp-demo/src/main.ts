@@ -16,6 +16,7 @@ import {
 	openResponse,
 	sealRequest,
 	submitTransaction,
+	verifyMessage,
 	type ConnectResponseParams,
 	type EstablishedSession,
 	type PendingConnect,
@@ -47,6 +48,8 @@ const scContractInput = $<HTMLInputElement>('sc-contract')
 const scMethodInput = $<HTMLInputElement>('sc-method')
 const scArgsInput = $<HTMLInputElement>('sc-args')
 const signScBtn = $<HTMLButtonElement>('sign-sc')
+const msgInput = $<HTMLInputElement>('msg')
+const signMsgBtn = $<HTMLButtonElement>('sign-msg')
 const genApiBtn = $<HTMLButtonElement>('gen-apikey')
 const resultBox = $<HTMLDivElement>('result')
 const resultTitle = $<HTMLSpanElement>('result-title')
@@ -90,7 +93,7 @@ function log(message: string, state: Status = 'idle') {
 
 const shortAddr = (a: string) => (a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a)
 const nodeUrl = () => nodeInput.value.trim() || NODE_URLS.mainnet
-const actionButtons = () => [sendTransferBtn, signScBtn, genApiBtn]
+const actionButtons = () => [sendTransferBtn, signScBtn, signMsgBtn, genApiBtn]
 const setBusy = (busy: boolean) => actionButtons().forEach((b) => (b.disabled = busy))
 const genId = () =>
 	typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `req-${Date.now()}`
@@ -449,6 +452,43 @@ function signContractCall() {
 	)
 }
 
+function signMsg() {
+	if (!session) return
+	const message = msgInput.value.trim()
+	if (!message) {
+		log('Enter a message to sign.', 'err')
+		return
+	}
+	const signer = accounts.find((a) => a.address === selectedAddress)
+	void sendRequest(
+		'amadeus_signMessage',
+		{ message },
+		(result) => {
+			const r = result as { message: string; signature: string; address: string }
+			// Prove the signature is real by verifying it right here in the dApp.
+			const valid = verifyMessage({
+				message: r.message,
+				signature: r.signature,
+				address: r.address
+			})
+			showResult({
+				title: 'Message signed',
+				sub: valid
+					? 'Signature verified in the dApp — no on-chain transaction'
+					: 'Warning: signature did NOT verify',
+				rows: [
+					['Signer', signer?.name ?? shortAddr(r.address)],
+					['Message', r.message],
+					['Signature', r.signature],
+					['Verified', valid ? 'yes ✓' : 'no ✗']
+				]
+			})
+			log(valid ? 'Message signed and verified.' : 'Signature failed to verify.', valid ? 'ok' : 'err')
+		},
+		{ account: selectedAddress }
+	)
+}
+
 function requestApiKey() {
 	if (!session) return
 	const signer = accounts.find((a) => a.address === selectedAddress)
@@ -499,4 +539,5 @@ acctList.addEventListener('click', (e) => {
 
 sendTransferBtn.addEventListener('click', sendTransfer)
 signScBtn.addEventListener('click', signContractCall)
+signMsgBtn.addEventListener('click', signMsg)
 genApiBtn.addEventListener('click', requestApiKey)
