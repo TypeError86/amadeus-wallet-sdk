@@ -36,6 +36,12 @@ export interface WalletRequest {
 	params: unknown
 	/** Unix-seconds expiry. */
 	exp: number
+	/**
+	 * Optional Base58 address the dApp wants to act with. The wallet resolves the
+	 * matching account's seed to sign; absent → the session's bound account. Lets
+	 * a multi-account dApp choose which account signs without reconnecting.
+	 */
+	account?: string
 }
 
 export type WalletResponse =
@@ -48,7 +54,8 @@ const walletRequestSchema = z.object({
 	method: z.enum(WALLET_METHODS),
 	origin: z.string().min(1),
 	params: z.unknown(),
-	exp: z.number().int()
+	exp: z.number().int(),
+	account: z.string().min(1).max(128).optional()
 })
 
 const walletResponseSchema = z.union([
@@ -72,6 +79,7 @@ export function makeRequest(params: {
 	method: WalletMethod
 	origin: string
 	params: unknown
+	account?: string
 	ttlSeconds?: number
 	now?: number
 }): WalletRequest {
@@ -82,7 +90,8 @@ export function makeRequest(params: {
 		method: params.method,
 		origin: params.origin,
 		params: params.params,
-		exp: nowSec + (params.ttlSeconds ?? 120)
+		exp: nowSec + (params.ttlSeconds ?? 120),
+		...(params.account ? { account: params.account } : {})
 	}
 }
 
