@@ -4,26 +4,38 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Amadeus dApp Demo</title>
+		<link rel="icon" type="image/svg+xml" href="/ama-favicon.svg" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
 		<style>
 			:root {
 				color-scheme: dark;
-				--bg: #0a0b0d;
-				--bg-soft: #0e1013;
-				--panel: #14161b;
-				--panel-2: #191c22;
-				--border: #262a31;
-				--ink: #e9edf1;
-				--dim: #8c94a1;
-				--faint: #5b6270;
-				--accent: #45c4bf;
+				/* Amadeus design tokens — mirrors amadeus-wallet-web / extension index.css */
+				--bg: #0a0a0f;
+				--bg-soft: #0f0f14;
+				--panel: #131313;
+				--panel-2: #17171a;
+				--border: rgba(255, 255, 255, 0.1);
+				--border-strong: rgba(255, 255, 255, 0.15);
+				--ink: #fafafa;
+				--dim: #9f9fa9;
+				--faint: #71717a;
+				--accent: #00baae; /* --primary (buttons/rings) */
+				--accent-logo: #00f0de; /* brand cyan (logo/hero) */
 				--accent-ink: #04201f;
-				--accent-soft: #45c4bf1a;
-				--ok: #4ccf9a;
+				--accent-soft: rgba(0, 240, 222, 0.12);
+				--ok: #22c55e;
 				--warn: #e0a44a;
-				--err: #e57373;
+				--err: #ff6467;
 				--radius: 16px;
-				--mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
-				--sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+				--radius-control: 8px;
+				--mono: 'Fira Code', ui-monospace, 'SF Mono', Menlo, monospace;
+				--sans: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
+				--brand: 'Orbitron', var(--sans);
 			}
 			* {
 				box-sizing: border-box;
@@ -35,7 +47,7 @@
 			body {
 				min-height: 100dvh;
 				background:
-					radial-gradient(120% 80% at 50% -10%, #10201f 0%, transparent 55%),
+					radial-gradient(60% 45% at 50% 0%, rgba(0, 240, 222, 0.09) 0%, transparent 70%),
 					var(--bg);
 				color: var(--ink);
 				font: 15px/1.55 var(--sans);
@@ -60,29 +72,34 @@
 				margin-bottom: 0.15rem;
 			}
 			.mark {
-				height: 32px;
-				width: 32px;
-				border-radius: 9px;
+				height: 34px;
+				width: 34px;
 				display: grid;
 				place-items: center;
-				background: linear-gradient(150deg, var(--accent), #2f8f8b);
-				color: var(--accent-ink);
-				font-weight: 800;
-				font-size: 1.05rem;
-				box-shadow: 0 4px 14px -4px var(--accent);
+				flex: none;
+				filter: drop-shadow(0 2px 12px rgba(0, 240, 222, 0.4));
+			}
+			.mark svg {
+				height: 100%;
+				width: auto;
+				display: block;
 			}
 			h1 {
-				font-size: 1.22rem;
-				font-weight: 660;
-				letter-spacing: -0.02em;
+				font-family: var(--brand);
+				font-size: 1.02rem;
+				font-weight: 700;
+				letter-spacing: 0.2em;
+				text-transform: uppercase;
 				margin: 0;
-				line-height: 1.1;
+				line-height: 1.2;
+				color: var(--ink);
 			}
 			.tag {
 				display: block;
 				font-size: 0.75rem;
 				color: var(--dim);
-				font-weight: 450;
+				font-weight: 400;
+				margin-top: 3px;
 			}
 
 			/* cards */
@@ -178,7 +195,7 @@
 				box-shadow: 0 8px 22px -12px var(--accent);
 			}
 			.btn-primary:hover:not(:disabled) {
-				background: #55d0cb;
+				background: #12cdc0;
 			}
 			.btn-ghost {
 				background: transparent;
@@ -545,10 +562,18 @@
 	<body>
 		<main>
 			<header>
-				<span class="mark">A</span>
+				<span class="mark" aria-hidden="true">
+					<svg viewBox="0 0 808 925" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<path d="M388.185 478.489L0.1875 253.953V700.474L93.1125 754.13V423.894L280.622 538.39V862.392L388.185 924.743V478.489Z" fill="#00F0DE" />
+						<path d="M289.687 756.385L84.2188 639.33L84.7526 527.285L289.687 644.932V756.385Z" fill="#00F0DE" />
+						<path d="M419.417 478.489L807.414 253.953V700.474L714.489 754.13V423.894L526.98 538.39V862.392L419.417 924.743V478.489Z" fill="#00F0DE" />
+						<path d="M517.922 756.385L723.391 639.33L722.857 527.285L517.922 644.932V756.385Z" fill="#00F0DE" />
+						<path d="M794.151 225.216L693.56 284.493L395.376 112.05L481.598 230.604L431.302 259.345L201.378 214.438L506.746 392.271L404.357 449.751L18.1562 225.216L193.053 123.531L314.539 151.564L253.976 88.1104L404.357 0.679688L794.151 225.216Z" fill="#00F0DE" />
+					</svg>
+				</span>
 				<span>
-					<h1>Amadeus dApp Demo</h1>
-					<span class="tag">Connect &amp; sign over the bridge</span>
+					<h1>Amadeus</h1>
+					<span class="tag">dApp Demo · connect &amp; sign over the bridge</span>
 				</span>
 			</header>
 

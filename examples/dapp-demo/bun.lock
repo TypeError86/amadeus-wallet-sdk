@@ -6,7 +6,7 @@
       "name": "amadeus-dapp-demo",
       "dependencies": {
         "@amadeus-protocol/sdk": "^1.1.2",
-        "@amadeus-protocol/wallet-sdk": "^0.1.0",
+        "@amadeus-protocol/wallet-sdk": "^0.1.4",
         "qrcode": "^1.5.4",
       },
       "devDependencies": {
@@ -19,7 +19,7 @@
   "packages": {
     "@amadeus-protocol/sdk": ["@amadeus-protocol/sdk@1.1.2", "", { "dependencies": { "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@scure/bip39": "^2.0.1", "bs58": "^6.0.0", "effect": "^3.19.8" } }, "sha512-cllPrz5RzWPfP7Q+9lUtpVedJWRPSyLPylZs9v83vXtVikUyMA+TDdxr3aGS491b+XVh4N6RbV7y/CBmoUnSww=="],
 
-    "@amadeus-protocol/wallet-sdk": ["@amadeus-protocol/wallet-sdk@0.1.0", "", { "dependencies": { "@noble/ciphers": "^2.1.1", "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "zod": "^3.24.0" }, "peerDependencies": { "@amadeus-protocol/sdk": "^1.1.2", "react": ">=18.0.0" }, "optionalPeers": ["react"] }, "sha512-C8NkC2CC38zy4DcZ9H5vm/WIt1uXi/q1/SypWthB13hDIq0blTneTlaNlhxmBkF6ogV1h8fZDB06AztnQqbozA=="],
+    "@amadeus-protocol/wallet-sdk": ["@amadeus-protocol/wallet-sdk@0.1.4", "", { "dependencies": { "@noble/ciphers": "^2.1.1", "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "zod": "^3.24.0" }, "peerDependencies": { "@amadeus-protocol/sdk": "^1.1.2", "react": ">=18.0.0" }, "optionalPeers": ["react"] }, "sha512-r+fHnpH7vEfwSvnEb+qKcVlypVeiXPMh5HE8JmOJ3H4iTJKlpSSt4fRAe1nX6yq4N6TI3yzGNCiMqffqqmSKfA=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.21.5", "", { "os": "aix", "cpu": "ppc64" }, "sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ=="],
 
