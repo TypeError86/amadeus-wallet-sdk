@@ -51,11 +51,11 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/amadeusprotocol/amadeus-wallet-sdk.git"
+		"url": "git+https://github.com/TypeError86/amadeus-wallet-sdk.git"
 	},
-	"homepage": "https://github.com/amadeusprotocol/amadeus-wallet-sdk#readme",
+	"homepage": "https://github.com/TypeError86/amadeus-wallet-sdk#readme",
 	"bugs": {
-		"url": "https://github.com/amadeusprotocol/amadeus-wallet-sdk/issues"
+		"url": "https://github.com/TypeError86/amadeus-wallet-sdk/issues"
 	},
 	"publishConfig": {
 		"access": "public"
