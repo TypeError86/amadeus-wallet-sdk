@@ -3,10 +3,11 @@ name: publish
 # Publishes @amadeus-protocol/wallet-sdk to npm. Triggers:
 #   - a merge to main that changes the version in package.json (auto-publish)
 #   - a published GitHub Release, or a manual run from the Actions tab
-# Requires an NPM_TOKEN repo secret with publish rights to the @amadeus-protocol scope.
+# Authenticates via OIDC trusted publishing (no token) against the package's
+# configured trusted publisher on npmjs.com.
 on:
     # Auto-publish when a merge to main changes the version in package.json.
-    # npm-publish is idempotent: if the version is already on npm it skips, so a
+    # Publishing is idempotent: if the version is already on npm it's skipped, so a
     # package.json change that doesn't bump the version is a no-op.
     push:
         branches: [main]
@@ -21,19 +22,27 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: read
+            id-token: write # required for OIDC trusted publishing (no token)
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-node@v4
               with:
-                  node-version: 20
+                  node-version: 22
                   registry-url: https://registry.npmjs.org
+            # Trusted publishing (OIDC) requires npm >= 11.5.1.
+            - name: Upgrade npm
+              run: npm install -g npm@latest
             # No package-lock (repo uses bun for dev), so a plain install.
             # Resolves @amadeus-protocol/sdk ^1.1.2 to the latest published minor.
             - run: npm install --no-audit --no-fund
-            # prepublishOnly runs build + test + lint; publishConfig sets public access.
-            # npm-publish skips (no error) when this version is already on npm.
-            - uses: JS-DevTools/npm-publish@v3
-              with:
-                  token: ${{ secrets.NPM_TOKEN }}
-                  registry: https://registry.npmjs.org
-                  access: public
+            # OIDC trusted publishing: no token. prepublishOnly runs build + test +
+            # lint; publishConfig sets public access. Idempotent: skips if this
+            # version is already on npm.
+            - name: Publish to npm
+              run: |
+                  VERSION=$(node -p "require('./package.json').version")
+                  if npm view "@amadeus-protocol/wallet-sdk@$VERSION" version >/dev/null 2>&1; then
+                    echo "v$VERSION already on npm — skipping publish"
+                  else
+                    npm publish --provenance --access public
+                  fi
