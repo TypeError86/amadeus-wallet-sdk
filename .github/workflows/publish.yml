@@ -1,10 +1,17 @@
 name: publish
 
-# Publishes @amadeus-protocol/wallet-sdk to npm when a GitHub Release is published
-# (or manually via the Actions tab). Requires:
-#   - an NPM_TOKEN repo secret with publish rights to the @amadeus-protocol scope
-#   - the release tag to match the version in package.json
+# Publishes @amadeus-protocol/wallet-sdk to npm. Triggers:
+#   - a merge to main that changes the version in package.json (auto-publish)
+#   - a published GitHub Release, or a manual run from the Actions tab
+# Requires an NPM_TOKEN repo secret with publish rights to the @amadeus-protocol scope.
 on:
+    # Auto-publish when a merge to main changes the version in package.json.
+    # npm-publish is idempotent: if the version is already on npm it skips, so a
+    # package.json change that doesn't bump the version is a no-op.
+    push:
+        branches: [main]
+        paths:
+            - package.json
     release:
         types: [published]
     workflow_dispatch:
@@ -21,8 +28,12 @@ jobs:
                   node-version: 20
                   registry-url: https://registry.npmjs.org
             # No package-lock (repo uses bun for dev), so a plain install.
+            # Resolves @amadeus-protocol/sdk ^1.1.2 to the latest published minor.
             - run: npm install --no-audit --no-fund
             # prepublishOnly runs build + test + lint; publishConfig sets public access.
-            - run: npm publish
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            # npm-publish skips (no error) when this version is already on npm.
+            - uses: JS-DevTools/npm-publish@v3
+              with:
+                  token: ${{ secrets.NPM_TOKEN }}
+                  registry: https://registry.npmjs.org
+                  access: public
