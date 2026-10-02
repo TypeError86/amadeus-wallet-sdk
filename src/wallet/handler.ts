@@ -9,6 +9,8 @@
  * the user has approved. It signs with the bound account's seed.
  */
 
+import type { NetworkType } from '@amadeus-protocol/sdk'
+
 import { PROTOCOL_VERSION } from '../constants'
 import { generateApiKey } from '../crypto/apikey'
 import { signMessage } from '../crypto/message'
@@ -26,6 +28,11 @@ export interface WalletHandlerContext {
 	seed: string
 	/** Address (Base58 public key) of the bound account. */
 	address: string
+	/**
+	 * Active network. Transactions are signed with this network's DST so a tx
+	 * signed on one network can't be replayed on another. Defaults to mainnet.
+	 */
+	network?: NetworkType
 }
 
 function ok(id: string, result: unknown): WalletResponse {
@@ -57,7 +64,8 @@ export function handleRequest(request: WalletRequest, ctx: WalletHandlerContext)
 					contract: parsed.data.contract,
 					method: parsed.data.method,
 					args: parsed.data.args,
-					description: parsed.data.description
+					description: parsed.data.description,
+					network: ctx.network
 				})
 				return ok(request.id, signed)
 			}

@@ -1,14 +1,20 @@
 /**
  * Transaction signing + submission.
  *
- * Signing reuses `@amadeus-protocol/sdk`'s `TransactionBuilder` verbatim (so the
- * packed bytes are identical to what the extension produces today) and layers on
- * the two behaviors the wallet's sign handler applies: restore JSON-transported
- * binary args, and convert a `Coin.transfer` Base58 recipient to raw bytes.
- * The wallet signs only; the caller submits the returned `txPacked` to a node.
+ * Signing delegates to `@amadeus-protocol/sdk`'s `signContractCall` (so the packed
+ * bytes are identical to what the extension produces) and layers on the two
+ * behaviors the wallet's sign handler applies: restore JSON-transported binary
+ * args, and convert a `Coin.transfer` Base58 recipient to raw bytes. The signature
+ * is bound to the given network's DST so a testnet tx can't be replayed on mainnet
+ * (defaults to mainnet). The wallet signs only; the caller submits `txPacked`.
  */
 
-import { fromBase58, type SerializableValue, TransactionBuilder } from '@amadeus-protocol/sdk'
+import {
+	fromBase58,
+	type NetworkType,
+	type SerializableValue,
+	signContractCall
+} from '@amadeus-protocol/sdk'
 
 import { decodeBinaryValues } from './binary'
 import { WalletSdkError } from './errors'
@@ -21,6 +27,8 @@ export interface SignTransactionParams {
 	/** Args may contain tagged binary values (see `encodeBinaryValues`). */
 	args: unknown[]
 	description?: string
+	/** Network whose signing DST to bind to. Defaults to mainnet. */
+	network?: NetworkType
 }
 
 export interface SignedTransaction {
@@ -31,8 +39,6 @@ export interface SignedTransaction {
 }
 
 export function signTransaction(params: SignTransactionParams): SignedTransaction {
-	const builder = new TransactionBuilder(params.seed)
-
 	// Restore any binary args that were wrapped for a JSON/text transport.
 	let processedArgs = decodeBinaryValues(params.args) as unknown[]
 
@@ -46,10 +52,14 @@ export function signTransaction(params: SignTransactionParams): SignedTransactio
 		processedArgs = [fromBase58(processedArgs[0]), processedArgs[1], processedArgs[2]]
 	}
 
-	const { txHash, txPacked } = builder.buildAndSign(
-		params.contract,
-		params.method,
-		processedArgs as SerializableValue[]
+	const { txHash, txPacked } = signContractCall(
+		params.seed,
+		{
+			contract: params.contract,
+			method: params.method,
+			args: processedArgs as SerializableValue[]
+		},
+		params.network
 	)
 	return { txHash, txPacked: Array.from(txPacked) }
 }
