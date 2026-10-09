@@ -96,6 +96,11 @@ export function handleRequest(request: WalletRequest, ctx: WalletHandlerContext)
 					'INVALID_ARGUMENT',
 					'amadeus_switchNetwork must be handled by the wallet app (it changes runtime state)'
 				)
+			case 'amadeus_switchAccount':
+				throw new WalletSdkError(
+					'INVALID_ARGUMENT',
+					'amadeus_switchAccount must be handled by the wallet app (it changes the active account)'
+				)
 			default:
 				throw new WalletSdkError('INVALID_ARGUMENT', `unknown method`)
 		}
