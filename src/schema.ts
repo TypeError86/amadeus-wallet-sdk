@@ -65,6 +65,11 @@ export const signMessageRequestSchema = z.object({
 	message: z.string().min(1).max(MAX_MESSAGE_LENGTH)
 })
 
+/** `switchAccount` params — the Base58 address of the account to make active. */
+export const switchAccountRequestSchema = z.object({
+	account: addressSchema
+})
+
 /** The connect transcript fields carried by a deep link / QR payload. */
 export const connectTranscriptSchema = z.object({
 	origin: originSchema,
@@ -77,4 +82,5 @@ export const connectTranscriptSchema = z.object({
 export type SignTransactionRequestInput = z.infer<typeof signTransactionRequestSchema>
 export type GenerateApiKeyRequestInput = z.infer<typeof generateApiKeyRequestSchema>
 export type SignMessageRequestInput = z.infer<typeof signMessageRequestSchema>
+export type SwitchAccountRequestInput = z.infer<typeof switchAccountRequestSchema>
 export type ConnectTranscriptInput = z.infer<typeof connectTranscriptSchema>
