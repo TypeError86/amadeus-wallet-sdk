@@ -28,6 +28,8 @@ export interface UseWalletResult {
 	isAvailable: boolean
 	connect: () => Promise<void>
 	disconnect: () => void
+	/** Switch the active account (user-confirmed in the wallet); `account` reflects the change via the provider's accountsChanged event. */
+	switchAccount: (target?: string) => Promise<string>
 	signTransaction: (request: SignTransactionRequest) => Promise<SignTransactionResponse>
 	signAndSubmit: WalletClient['signAndSubmit']
 	ensureApiKey: WalletClient['ensureApiKey']
@@ -124,6 +126,7 @@ export function useWallet(): UseWalletResult {
 		isAvailable: client.isAvailable(),
 		connect,
 		disconnect,
+		switchAccount: client.switchAccount,
 		signTransaction: client.signTransaction,
 		signAndSubmit: client.signAndSubmit,
 		ensureApiKey: client.ensureApiKey

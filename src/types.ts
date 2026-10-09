@@ -56,6 +56,13 @@ export interface AmadeusProvider {
 	getNetwork(): Promise<string>
 	requestAccounts(): Promise<string[]>
 	requestSwitchNetwork(network: string): Promise<string>
+	/**
+	 * Ask the wallet to make another of its accounts active. `target` is an optional
+	 * Base58 address hint; the wallet always confirms with the user (and presents its
+	 * own account chooser) before switching, so a dApp can never switch silently.
+	 * Resolves to the new active account's Base58 address.
+	 */
+	requestSwitchAccount(target?: string): Promise<string>
 	signTransaction(params: SignTransactionRequest): Promise<SignTransactionResponse>
 	generateApiKey(params: GenerateApiKeyRequest): Promise<GenerateApiKeyResponse>
 	on<E extends AmadeusProviderEvent>(

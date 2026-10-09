@@ -136,4 +136,17 @@ describe('wallet handler', () => {
 		const res = handleRequest(req, ctx)
 		expect(res.ok).toBe(false)
 	})
+
+	it('reports switchAccount as app-delegated rather than crashing', () => {
+		const req = makeRequest({
+			id: '8',
+			method: 'amadeus_switchAccount',
+			origin: 'https://x',
+			params: { account: address },
+			now: FIXED_NOW
+		})
+		const res = handleRequest(req, ctx)
+		expect(res.ok).toBe(false)
+		if (!res.ok) expect(res.error.code).toBe('INVALID_ARGUMENT')
+	})
 })

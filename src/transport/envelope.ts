@@ -20,7 +20,8 @@ export const WALLET_METHODS = [
 	'amadeus_signMessage',
 	'amadeus_getAccounts',
 	'amadeus_generateApiKey',
-	'amadeus_switchNetwork'
+	'amadeus_switchNetwork',
+	'amadeus_switchAccount'
 ] as const
 
 export type WalletMethod = (typeof WALLET_METHODS)[number]
