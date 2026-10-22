@@ -9,6 +9,7 @@ export type WalletSdkErrorCode =
 	| 'INVALID_ARGUMENT'
 	| 'SUBMIT_FAILED'
 	| 'DECRYPT_FAILED'
+	| 'UNSUPPORTED'
 
 export class WalletSdkError extends Error {
 	readonly code: WalletSdkErrorCode

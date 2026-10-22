@@ -101,7 +101,12 @@ export function createInjectedWalletClient(providerOverride?: AmadeusProvider): 
 		},
 		getAccount: () => requireProvider().getAccount(),
 		getNetwork: () => requireProvider().getNetwork(),
-		switchAccount: (target) => requireProvider().requestSwitchAccount(target),
+		switchAccount: async (target) => {
+			const provider = requireProvider()
+			if (typeof provider.requestSwitchAccount !== 'function')
+				throw new WalletSdkError('UNSUPPORTED', 'wallet does not support switchAccount')
+			return provider.requestSwitchAccount(target)
+		},
 		signTransaction: (request) => requireProvider().signTransaction(request),
 		signAndSubmit: async (request, options) => {
 			const { txHash, txPacked } = await requireProvider().signTransaction(request)

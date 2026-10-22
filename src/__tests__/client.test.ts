@@ -42,6 +42,14 @@ describe('injected wallet client', () => {
 		expect(await client.switchAccount()).toBe('ADDRESS2')
 	})
 
+	it('switchAccount rejects with UNSUPPORTED when the wallet lacks the method', async () => {
+		const client = createInjectedWalletClient(fakeProvider({ requestSwitchAccount: undefined }))
+		await expect(client.switchAccount('TARGET')).rejects.toMatchObject({
+			name: 'WalletSdkError',
+			code: 'UNSUPPORTED'
+		})
+	})
+
 	it('signAndSubmit signs then POSTs the packed bytes', async () => {
 		const fetchMock = vi.fn(
 			async (_url: string, _init?: RequestInit) =>
