@@ -65,9 +65,9 @@ export const signMessageRequestSchema = z.object({
 	message: z.string().min(1).max(MAX_MESSAGE_LENGTH)
 })
 
-/** `switchAccount` params — the Base58 address of the account to make active. */
+/** `switchAccount` params — optional Base58 address hint; when absent the wallet shows its own account chooser. */
 export const switchAccountRequestSchema = z.object({
-	account: addressSchema
+	account: addressSchema.optional()
 })
 
 /** The connect transcript fields carried by a deep link / QR payload. */
