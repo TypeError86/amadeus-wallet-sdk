@@ -11,7 +11,7 @@
         "zod": "^3.24.0",
       },
       "devDependencies": {
-        "@amadeus-protocol/sdk": "^1.1.2",
+        "@amadeus-protocol/sdk": "^1.6.0",
         "@eslint/js": "^9.21.0",
         "@types/node": "^22.14.0",
         "@types/react": "^19.0.0",
@@ -25,7 +25,7 @@
         "vitest": "^2.1.0",
       },
       "peerDependencies": {
-        "@amadeus-protocol/sdk": "^1.1.2",
+        "@amadeus-protocol/sdk": "^1.3.0",
         "react": ">=18.0.0",
       },
       "optionalPeers": [
@@ -34,7 +34,7 @@
     },
   },
   "packages": {
-    "@amadeus-protocol/sdk": ["@amadeus-protocol/sdk@1.1.2", "", { "dependencies": { "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@scure/bip39": "^2.0.1", "bs58": "^6.0.0", "effect": "^3.19.8" } }, "sha512-cllPrz5RzWPfP7Q+9lUtpVedJWRPSyLPylZs9v83vXtVikUyMA+TDdxr3aGS491b+XVh4N6RbV7y/CBmoUnSww=="],
+    "@amadeus-protocol/sdk": ["@amadeus-protocol/sdk@1.6.0", "", { "dependencies": { "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@scure/bip39": "^2.0.1", "bs58": "^6.0.0", "effect": "^3.19.8" } }, "sha512-Tc1AOUk3Xwg/1McVhJHTebVwJUx9u+WzidyzPMQOGlfBCFmF+KMuG8+CmnDO4UV8FjBh3Sg87dwakfWVk2+3yA=="],
 
     "@ampproject/remapping": ["@ampproject/remapping@2.3.0", "", { "dependencies": { "@jridgewell/gen-mapping": "^0.3.5", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw=="],
 

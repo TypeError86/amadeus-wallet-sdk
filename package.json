@@ -1,6 +1,6 @@
 {
 	"name": "@amadeus-protocol/wallet-sdk",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "Shared dApp <-> wallet connection layer for Amadeus Protocol: BLS API-key tokens, transaction signing, message/connect signing, and the typed provider contract. One audited implementation for the wallet, the extension, and every dApp.",
 	"type": "module",
 	"sideEffects": false,
@@ -67,7 +67,7 @@
 		"zod": "^3.24.0"
 	},
 	"peerDependencies": {
-		"@amadeus-protocol/sdk": "^1.1.2",
+		"@amadeus-protocol/sdk": "^1.3.0",
 		"react": ">=18.0.0"
 	},
 	"peerDependenciesMeta": {
@@ -76,7 +76,7 @@
 		}
 	},
 	"devDependencies": {
-		"@amadeus-protocol/sdk": "^1.1.2",
+		"@amadeus-protocol/sdk": "^1.6.0",
 		"@eslint/js": "^9.21.0",
 		"@types/node": "^22.14.0",
 		"@types/react": "^19.0.0",

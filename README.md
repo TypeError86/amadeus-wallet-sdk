@@ -41,6 +41,23 @@ const result = verifyApiKey(apiKey, { aud: 'amadeus' })
 if (result.valid) console.log(result.address)
 ```
 
+> **The token's address is the public key of the `seed` you pass in.** A recovery
+> phrase can open two different addresses (the standard `eip2333` derivation, and
+> the `legacy` raw-BIP39 seed used by wallets created with older extension and app
+> builds), so don't assume one. Resolve the seed with `resolveCandidateForAddress`
+> (sdk ≥ 1.6.0), which returns the candidate whose `publicKey` equals the user's
+> wallet address, or `null` if neither derivation opens it (it throws on an
+> invalid phrase). Otherwise the token silently belongs to a different account.
+>
+> ```ts
+> import { resolveCandidateForAddress } from '@amadeus-protocol/sdk'
+> import { generateApiKey } from '@amadeus-protocol/wallet-sdk'
+>
+> const candidate = resolveCandidateForAddress(phrase, walletAddress)
+> if (!candidate) throw new Error('This phrase does not open that address')
+> const { apiKey } = generateApiKey({ seed: candidate.seed, aud: 'amadeus', expIn: 3600 })
+> ```
+
 ## Security notes
 
 - **Distinct DSTs** (`_TX_`, `_APIKEY_`, `_CONNECT_`) make a signature from one
