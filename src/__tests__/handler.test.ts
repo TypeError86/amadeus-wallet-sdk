@@ -147,6 +147,11 @@ describe('wallet handler', () => {
 		})
 		const res = handleRequest(req, ctx)
 		expect(res.ok).toBe(false)
-		if (!res.ok) expect(res.error.code).toBe('INVALID_ARGUMENT')
+		if (!res.ok) {
+			expect(res.error.code).toBe('INVALID_ARGUMENT')
+			expect(res.error.message).toMatch(
+				/amadeus_switchAccount must be handled by the wallet app/
+			)
+		}
 	})
 })

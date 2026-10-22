@@ -48,8 +48,9 @@ function fail(id: string, error: unknown): WalletResponse {
 /**
  * Service one approved request and return a response ready to seal. Never throws
  * — failures come back as `{ ok: false, error }` so the transport can always
- * reply. `amadeus_switchNetwork` is deliberately delegated to the app (it mutates
- * wallet runtime state), signalled with a distinct error the caller can branch on.
+ * reply. `amadeus_switchNetwork` and `amadeus_switchAccount` are deliberately
+ * delegated to the app (they mutate wallet runtime state), signalled with a
+ * distinct error the caller can branch on.
  */
 export function handleRequest(request: WalletRequest, ctx: WalletHandlerContext): WalletResponse {
 	try {
