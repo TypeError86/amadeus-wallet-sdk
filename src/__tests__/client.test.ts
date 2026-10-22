@@ -14,6 +14,7 @@ function fakeProvider(overrides: Partial<AmadeusProvider> = {}): AmadeusProvider
 		getNetwork: async () => 'mainnet',
 		requestAccounts: async () => ['ADDRESS'],
 		requestSwitchNetwork: async (n) => n,
+		requestSwitchAccount: async (target) => target ?? 'ADDRESS2',
 		signTransaction: async () => ({ txHash: 'HASH', txPacked: [1, 2, 3] }),
 		generateApiKey: async () => ({ apiKey: 'KEY' }),
 		on: () => {},
@@ -30,6 +31,23 @@ describe('injected wallet client', () => {
 	it('connect returns the first account', async () => {
 		const client = createInjectedWalletClient(fakeProvider())
 		expect(await client.connect()).toBe('ADDRESS')
+	})
+
+	it('switchAccount forwards the target and resolves to the new address', async () => {
+		const requestSwitchAccount = vi.fn(async (target?: string) => target ?? 'ADDRESS2')
+		const client = createInjectedWalletClient(fakeProvider({ requestSwitchAccount }))
+		expect(await client.switchAccount('TARGET')).toBe('TARGET')
+		expect(requestSwitchAccount).toHaveBeenCalledWith('TARGET')
+		// No target hint → the wallet chooses; the client still resolves to an address.
+		expect(await client.switchAccount()).toBe('ADDRESS2')
+	})
+
+	it('switchAccount rejects with UNSUPPORTED when the wallet lacks the method', async () => {
+		const client = createInjectedWalletClient(fakeProvider({ requestSwitchAccount: undefined }))
+		await expect(client.switchAccount('TARGET')).rejects.toMatchObject({
+			name: 'WalletSdkError',
+			code: 'UNSUPPORTED'
+		})
 	})
 
 	it('signAndSubmit signs then POSTs the packed bytes', async () => {

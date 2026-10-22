@@ -49,6 +49,8 @@ export interface WalletClient {
 	connect(): Promise<string>
 	getAccount(): Promise<string | null>
 	getNetwork(): Promise<string>
+	/** Ask the wallet to switch the active account (user-confirmed); resolves to the new address. */
+	switchAccount(target?: string): Promise<string>
 	signTransaction(request: SignTransactionRequest): Promise<SignTransactionResponse>
 	/** Sign then submit the packed bytes to a node; resolves to the tx hash + node reply. */
 	signAndSubmit(
@@ -99,6 +101,12 @@ export function createInjectedWalletClient(providerOverride?: AmadeusProvider): 
 		},
 		getAccount: () => requireProvider().getAccount(),
 		getNetwork: () => requireProvider().getNetwork(),
+		switchAccount: async (target) => {
+			const provider = requireProvider()
+			if (typeof provider.requestSwitchAccount !== 'function')
+				throw new WalletSdkError('UNSUPPORTED', 'wallet does not support switchAccount')
+			return provider.requestSwitchAccount(target)
+		},
 		signTransaction: (request) => requireProvider().signTransaction(request),
 		signAndSubmit: async (request, options) => {
 			const { txHash, txPacked } = await requireProvider().signTransaction(request)

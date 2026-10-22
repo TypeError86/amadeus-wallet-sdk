@@ -8,7 +8,8 @@ import {
 	generateApiKeyRequestSchema,
 	originSchema,
 	sessionPublicKeySchema,
-	signTransactionRequestSchema
+	signTransactionRequestSchema,
+	switchAccountRequestSchema
 } from '../schema'
 
 describe('schemas', () => {
@@ -17,6 +18,13 @@ describe('schemas', () => {
 		expect(addressSchema.safeParse(address).success).toBe(true)
 		expect(addressSchema.safeParse('abc').success).toBe(false)
 		expect(addressSchema.safeParse('!!!').success).toBe(false)
+	})
+
+	it('switchAccountRequestSchema treats the account as an optional hint', () => {
+		const address = derivePublicKeyFromSeedBase58(generateKeypair().privateKey)
+		expect(switchAccountRequestSchema.safeParse({}).success).toBe(true)
+		expect(switchAccountRequestSchema.safeParse({ account: address }).success).toBe(true)
+		expect(switchAccountRequestSchema.safeParse({ account: 'bad' }).success).toBe(false)
 	})
 
 	it('originSchema requires http(s)', () => {
