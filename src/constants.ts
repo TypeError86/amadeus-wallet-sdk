@@ -95,7 +95,8 @@ export const PROVIDER_EVENTS = [
 	'disconnect',
 	'lock',
 	'unlock',
-	'networkChanged'
+	'networkChanged',
+	'shown'
 ] as const
 
 /** The valid networks the wallet exposes. */

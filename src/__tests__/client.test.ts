@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { generateApiKey } from '../crypto/apikey'
+import { decodeApiKey, generateApiKey } from '../crypto/apikey'
 import { generateKeypair } from '@amadeus-protocol/sdk'
 import { createInjectedWalletClient } from '../client/injected'
 import type { AmadeusProvider } from '../types'
@@ -87,6 +87,66 @@ describe('injected wallet client', () => {
 		expect(gen).toHaveBeenCalledOnce()
 	})
 
+	it('ensureApiKey keys the cache by aud', async () => {
+		const { privateKey: seed } = generateKeypair()
+		const keyFor = (aud: string) => generateApiKey({ seed, aud, expIn: 3600 }).apiKey
+		const gen = vi.fn(async ({ aud }: { aud: string }) => ({ apiKey: keyFor(aud) }))
+		const client = createInjectedWalletClient(fakeProvider({ generateApiKey: gen }))
+
+		const first = await client.ensureApiKey({ aud: 'hub', expIn: 3600 })
+		const second = await client.ensureApiKey({ aud: 'kbs', expIn: 3600 })
+		expect(decodeApiKey(first).payload.aud).toBe('hub')
+		expect(decodeApiKey(second).payload.aud).toBe('kbs')
+		expect(await client.ensureApiKey({ aud: 'hub', expIn: 3600 })).toBe(first)
+		expect(gen).toHaveBeenCalledTimes(2)
+	})
+
+	it('ensureApiKey does not coalesce concurrent calls for different auds', async () => {
+		const { privateKey: seed } = generateKeypair()
+		const gen = vi.fn(async ({ aud }: { aud: string }) => ({
+			apiKey: generateApiKey({ seed, aud, expIn: 3600 }).apiKey
+		}))
+		const client = createInjectedWalletClient(fakeProvider({ generateApiKey: gen }))
+
+		const [hubKey, kbsKey] = await Promise.all([
+			client.ensureApiKey({ aud: 'hub', expIn: 3600 }),
+			client.ensureApiKey({ aud: 'kbs', expIn: 3600 })
+		])
+		expect(decodeApiKey(hubKey).payload.aud).toBe('hub')
+		expect(decodeApiKey(kbsKey).payload.aud).toBe('kbs')
+		expect(gen).toHaveBeenCalledTimes(2)
+	})
+
+	it('ensureApiKey ignores a single-slot store holding another aud', async () => {
+		const { privateKey: seed } = generateKeypair()
+		const slot = { value: generateApiKey({ seed, aud: 'hub', expIn: 3600 }).apiKey }
+		const store = {
+			get: () => slot.value,
+			set: (apiKey: string) => {
+				slot.value = apiKey
+			}
+		}
+		const kbsKey = generateApiKey({ seed, aud: 'kbs', expIn: 3600 }).apiKey
+		const gen = vi.fn(async () => ({ apiKey: kbsKey }))
+		const client = createInjectedWalletClient(fakeProvider({ generateApiKey: gen }))
+
+		expect(await client.ensureApiKey({ aud: 'kbs', expIn: 3600, store })).toBe(kbsKey)
+		expect(gen).toHaveBeenCalledOnce()
+	})
+
+	it('ensureApiKey passes aud to the store', async () => {
+		const { privateKey: seed } = generateKeypair()
+		const apiKey = generateApiKey({ seed, aud: 'kbs', expIn: 3600 }).apiKey
+		const store = { get: vi.fn((_aud?: string) => null), set: vi.fn() }
+		const client = createInjectedWalletClient(
+			fakeProvider({ generateApiKey: async () => ({ apiKey }) })
+		)
+
+		await client.ensureApiKey({ aud: 'kbs', expIn: 3600, store })
+		expect(store.get).toHaveBeenCalledWith('kbs')
+		expect(store.set).toHaveBeenCalledWith(apiKey, 'kbs')
+	})
+
 	it('regenerates when the cached key is expired/invalid', async () => {
 		const { privateKey: seed } = generateKeypair()
 		// already-expired token (expIn negative via now in the far future is not allowed; use a tiny ttl + old now)
@@ -104,7 +164,7 @@ describe('injected wallet client', () => {
 		const out = await client.ensureApiKey({ aud: 'amadeus', expIn: 3600, store })
 		expect(out).toBe(fresh)
 		expect(gen).toHaveBeenCalledOnce()
-		expect(store.set).toHaveBeenCalledWith(fresh)
+		expect(store.set).toHaveBeenCalledWith(fresh, 'amadeus')
 	})
 
 	it('throws when no provider is available', async () => {
