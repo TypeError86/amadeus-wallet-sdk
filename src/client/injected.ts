@@ -24,19 +24,25 @@ import { getAmadeusProvider } from '../types'
 
 /** Where a cached api-key lives. Default is in-memory; dApps can pass localStorage-backed. */
 export interface ApiKeyStore {
-	get(): string | null
-	set(apiKey: string): void
+	/** `aud` is passed so a store can keep one key per audience. */
+	get(aud?: string): string | null
+	set(apiKey: string, aud?: string): void
 }
 
 function memoryApiKeyStore(): ApiKeyStore {
-	let value: string | null = null
-	return { get: () => value, set: (apiKey) => (value = apiKey) }
+	const keysByAud = new Map<string, string>()
+	return {
+		get: (aud = '') => keysByAud.get(aud) ?? null,
+		set: (apiKey, aud = '') => {
+			keysByAud.set(aud, apiKey)
+		}
+	}
 }
 
-function isApiKeyValid(apiKey: string, leewaySeconds: number): boolean {
+function isApiKeyValid(apiKey: string, aud: string, leewaySeconds: number): boolean {
 	try {
 		const { payload } = decodeApiKey(apiKey)
-		return payload.exp > Math.floor(Date.now() / 1000) + leewaySeconds
+		return payload.aud === aud && payload.exp > Math.floor(Date.now() / 1000) + leewaySeconds
 	} catch {
 		return false
 	}
@@ -57,7 +63,7 @@ export interface WalletClient {
 		request: SignTransactionRequest,
 		options: { nodeUrl: string; wait?: boolean }
 	): Promise<{ txHash: string; submitted: unknown }>
-	/** Return a valid cached api-key, minting (and caching) a fresh one if needed. Coalesces concurrent calls. */
+	/** Return a valid cached api-key for `aud`, minting (and caching) a fresh one if needed. Coalesces concurrent calls per aud. */
 	ensureApiKey(options: {
 		aud: string
 		expIn: number
@@ -88,7 +94,7 @@ export function createInjectedWalletClient(providerOverride?: AmadeusProvider): 
 	}
 
 	const defaultStore = memoryApiKeyStore()
-	let pendingApiKey: Promise<string> | null = null
+	const pendingApiKeys = new Map<string, Promise<string>>()
 
 	return {
 		isAvailable: () => getProvider() !== null,
@@ -117,20 +123,21 @@ export function createInjectedWalletClient(providerOverride?: AmadeusProvider): 
 			return { txHash, submitted }
 		},
 		ensureApiKey: ({ aud, expIn, store = defaultStore, leewaySeconds = 60 }) => {
-			const cached = store.get()
-			if (cached && isApiKeyValid(cached, leewaySeconds)) return Promise.resolve(cached)
-			if (!pendingApiKey) {
-				pendingApiKey = requireProvider()
-					.generateApiKey({ aud, exp_in: expIn })
-					.then(({ apiKey }) => {
-						store.set(apiKey)
-						return apiKey
-					})
-					.finally(() => {
-						pendingApiKey = null
-					})
-			}
-			return pendingApiKey
+			const cached = store.get(aud)
+			if (cached && isApiKeyValid(cached, aud, leewaySeconds)) return Promise.resolve(cached)
+			const inFlight = pendingApiKeys.get(aud)
+			if (inFlight) return inFlight
+			const request = requireProvider()
+				.generateApiKey({ aud, exp_in: expIn })
+				.then(({ apiKey }) => {
+					store.set(apiKey, aud)
+					return apiKey
+				})
+				.finally(() => {
+					pendingApiKeys.delete(aud)
+				})
+			pendingApiKeys.set(aud, request)
+			return request
 		},
 		on: (event, cb) => requireProvider().on(event, cb),
 		off: (event, cb) => requireProvider().off(event, cb)
