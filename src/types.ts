@@ -35,14 +35,38 @@ export interface GenerateApiKeyResponse {
 	apiKey: string
 }
 
+/** ISO 8601 string (`new Date().toISOString()`), as the extension emits it. */
+export type AmadeusEventTimestamp = string
+
+/** How the wallet surfaced an approval prompt. */
+export type AmadeusShownAs = 'sidepanel' | 'popup' | 'window'
+
 /** Event payloads emitted through the provider's `.on(name, cb)` channel. */
 export interface AmadeusEventPayloadMap {
-	accountsChanged: { accounts: string[]; previousAccounts: string[]; timestamp: number }
-	connect: { accounts: string[]; network: string; timestamp: number }
-	disconnect: { reason?: string; timestamp: number }
-	lock: { reason?: string; timestamp: number }
-	unlock: { accounts: string[]; network: string; timestamp: number }
-	networkChanged: { network: string; previousNetwork: string; timestamp: number }
+	accountsChanged: {
+		accounts: string[]
+		previousAccounts: string[]
+		timestamp: AmadeusEventTimestamp
+	}
+	connect: { accounts: string[]; network: string; timestamp: AmadeusEventTimestamp }
+	disconnect: { reason?: string; timestamp: AmadeusEventTimestamp }
+	lock: { reason?: string; timestamp: AmadeusEventTimestamp }
+	unlock: { accounts: string[]; network: string; timestamp: AmadeusEventTimestamp }
+	networkChanged: {
+		network: string
+		previousNetwork: string
+		timestamp: AmadeusEventTimestamp
+	}
+	/** A signTransaction approval prompt was surfaced; the sign promise still settles later. */
+	shown: { requestId: string; shownAs: AmadeusShownAs; timestamp: AmadeusEventTimestamp }
+}
+
+/** One of this origin's queued wallet requests, as returned by `getPendingRequests()`. */
+export interface PendingRequestSummary {
+	type: 'sign' | 'apiKey' | 'switchNetwork' | 'switchAccount' | 'connection'
+	id: string
+	/** Milliseconds since epoch when the wallet queued the request. */
+	timestamp: number
 }
 
 /**
@@ -64,6 +88,10 @@ export interface AmadeusProvider {
 	 * predate it lack the method.
 	 */
 	requestSwitchAccount?(target?: string): Promise<string>
+	/** This origin's queued requests, oldest first. Optional: extension >= 1.6.0. */
+	getPendingRequests?(): Promise<PendingRequestSummary[]>
+	/** Cancel one of this origin's own pending requests. Optional: extension >= 1.6.0. */
+	cancelRequest?(requestId: string): void
 	signTransaction(params: SignTransactionRequest): Promise<SignTransactionResponse>
 	generateApiKey(params: GenerateApiKeyRequest): Promise<GenerateApiKeyResponse>
 	on<E extends AmadeusProviderEvent>(
