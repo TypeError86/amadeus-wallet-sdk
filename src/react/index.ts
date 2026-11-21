@@ -80,7 +80,7 @@ export function useWallet(): UseWalletResult {
 			applyAccounts(d.accounts)
 		const onConnect = (d: AmadeusEventPayloadMap['connect']) => {
 			applyAccounts(d.accounts)
-			// The extension sends `network: null` before it knows one; keep the last known value.
+			// Extension 1.9.2 always sends a network here; other providers may omit it, so keep the last value.
 			if (d.network) setNetwork(d.network)
 		}
 		const onDisconnect = () => {
