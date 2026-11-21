@@ -16,10 +16,11 @@ signature — end to end over the bridge relay.
     bun install
     bun run dev                   # prints a http://localhost:5173 URL
     ```
+    Checks: `bun run typecheck`, `bun run lint` and `bun run test`.
 3. Open the URL, click **Connect wallet**, and **scan the QR** with the Amadeus
    wallet (Home → Connect) and approve.
-4. Click **Sign test transfer** and approve in the wallet — the returned tx hash
-   appears in the demo.
+4. Click **Send AMA** (1 AMA to yourself by default) and approve in the wallet —
+   the demo submits the signed transaction and shows its hash.
 
 ## Cross-device note
 

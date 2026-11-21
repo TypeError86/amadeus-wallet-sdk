@@ -39,10 +39,19 @@ function memoryApiKeyStore(): ApiKeyStore {
 	}
 }
 
-function isApiKeyValid(apiKey: string, aud: string, leewaySeconds: number): boolean {
+function isApiKeyValid(
+	apiKey: string,
+	aud: string,
+	account: string | null,
+	leewaySeconds: number
+): boolean {
 	try {
-		const { payload } = decodeApiKey(apiKey)
-		return payload.aud === aud && payload.exp > Math.floor(Date.now() / 1000) + leewaySeconds
+		const { payload, address } = decodeApiKey(apiKey)
+		return (
+			address === account &&
+			payload.aud === aud &&
+			payload.exp > Math.floor(Date.now() / 1000) + leewaySeconds
+		)
 	} catch {
 		return false
 	}
@@ -63,7 +72,7 @@ export interface WalletClient {
 		request: SignTransactionRequest,
 		options: { nodeUrl: string; wait?: boolean }
 	): Promise<{ txHash: string; submitted: unknown }>
-	/** Return a valid cached api-key for `aud`, minting (and caching) a fresh one if needed. Coalesces concurrent calls per aud. */
+	/** Return a valid cached api-key for `aud` signed by the active account, minting (and caching) a fresh one if needed. Coalesces concurrent calls per account + aud. */
 	ensureApiKey(options: {
 		aud: string
 		expIn: number
@@ -122,21 +131,24 @@ export function createInjectedWalletClient(providerOverride?: AmadeusProvider): 
 			})
 			return { txHash, submitted }
 		},
-		ensureApiKey: ({ aud, expIn, store = defaultStore, leewaySeconds = 60 }) => {
+		ensureApiKey: async ({ aud, expIn, store = defaultStore, leewaySeconds = 60 }) => {
+			const provider = requireProvider()
+			const account = await provider.getAccount()
 			const cached = store.get(aud)
-			if (cached && isApiKeyValid(cached, aud, leewaySeconds)) return Promise.resolve(cached)
-			const inFlight = pendingApiKeys.get(aud)
+			if (cached && isApiKeyValid(cached, aud, account, leewaySeconds)) return cached
+			const pendingKey = JSON.stringify([account, aud])
+			const inFlight = pendingApiKeys.get(pendingKey)
 			if (inFlight) return inFlight
-			const request = requireProvider()
+			const request = provider
 				.generateApiKey({ aud, exp_in: expIn })
 				.then(({ apiKey }) => {
 					store.set(apiKey, aud)
 					return apiKey
 				})
 				.finally(() => {
-					pendingApiKeys.delete(aud)
+					pendingApiKeys.delete(pendingKey)
 				})
-			pendingApiKeys.set(aud, request)
+			pendingApiKeys.set(pendingKey, request)
 			return request
 		},
 		on: (event, cb) => requireProvider().on(event, cb),

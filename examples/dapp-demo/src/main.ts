@@ -5,7 +5,6 @@
  * dApp submits them to the chosen node.
  */
 
-import { toAtomicAma } from '@amadeus-protocol/sdk'
 import {
 	BridgeClient,
 	completeConnect,
@@ -24,42 +23,44 @@ import {
 	type WalletRequest
 } from '@amadeus-protocol/wallet-sdk'
 import QRCode from 'qrcode'
+import { parseArgs, submitErrorMessage, toAtomicAmount } from './helpers'
 
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
+const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
-const bridgeInput = $<HTMLInputElement>('bridge')
-const nodeInput = $<HTMLInputElement>('node')
-const netseg = $<HTMLDivElement>('netseg')
-const connectCard = $<HTMLDivElement>('connect-card')
-const connectBtn = $<HTMLButtonElement>('connect')
-const regenBtn = $<HTMLButtonElement>('regen')
-const copyBtn = $<HTMLButtonElement>('copylink')
-const disconnectBtn = $<HTMLButtonElement>('disconnect')
-const qrBox = $<HTMLDivElement>('qr')
-const qrCanvas = $<HTMLCanvasElement>('qrcanvas')
-const linkEl = $<HTMLAnchorElement>('link')
-const sessionCard = $<HTMLDivElement>('session-card')
-const acctList = $<HTMLDivElement>('accounts')
-const accountsLabel = $<HTMLSpanElement>('accounts-label')
-const recipientInput = $<HTMLInputElement>('recipient')
-const amountInput = $<HTMLInputElement>('amount')
-const sendTransferBtn = $<HTMLButtonElement>('send-transfer')
-const scContractInput = $<HTMLInputElement>('sc-contract')
-const scMethodInput = $<HTMLInputElement>('sc-method')
-const scArgsInput = $<HTMLInputElement>('sc-args')
-const signScBtn = $<HTMLButtonElement>('sign-sc')
-const msgInput = $<HTMLInputElement>('msg')
-const signMsgBtn = $<HTMLButtonElement>('sign-msg')
-const genApiBtn = $<HTMLButtonElement>('gen-apikey')
-const resultBox = $<HTMLDivElement>('result')
-const resultTitle = $<HTMLSpanElement>('result-title')
-const resultSub = $<HTMLSpanElement>('result-sub')
-const resultRows = $<HTMLDivElement>('result-rows')
-const resultLink = $<HTMLAnchorElement>('result-link')
-const statusEl = $<HTMLDivElement>('status')
-const logEl = $<HTMLPreElement>('log')
+const bridgeInput = byId<HTMLInputElement>('bridge')
+const nodeInput = byId<HTMLInputElement>('node')
+const netseg = byId<HTMLDivElement>('netseg')
+const connectCard = byId<HTMLDivElement>('connect-card')
+const connectBtn = byId<HTMLButtonElement>('connect')
+const regenBtn = byId<HTMLButtonElement>('regen')
+const copyBtn = byId<HTMLButtonElement>('copylink')
+const disconnectBtn = byId<HTMLButtonElement>('disconnect')
+const qrBox = byId<HTMLDivElement>('qr')
+const qrCanvas = byId<HTMLCanvasElement>('qrcanvas')
+const linkEl = byId<HTMLAnchorElement>('link')
+const sessionCard = byId<HTMLDivElement>('session-card')
+const acctList = byId<HTMLDivElement>('accounts')
+const accountsLabel = byId<HTMLSpanElement>('accounts-label')
+const recipientInput = byId<HTMLInputElement>('recipient')
+const amountInput = byId<HTMLInputElement>('amount')
+const sendTransferBtn = byId<HTMLButtonElement>('send-transfer')
+const scContractInput = byId<HTMLInputElement>('sc-contract')
+const scMethodInput = byId<HTMLInputElement>('sc-method')
+const scArgsInput = byId<HTMLInputElement>('sc-args')
+const signScBtn = byId<HTMLButtonElement>('sign-sc')
+const msgInput = byId<HTMLInputElement>('msg')
+const signMsgBtn = byId<HTMLButtonElement>('sign-msg')
+const genApiBtn = byId<HTMLButtonElement>('gen-apikey')
+const resultBox = byId<HTMLDivElement>('result')
+const resultTitle = byId<HTMLSpanElement>('result-title')
+const resultSub = byId<HTMLSpanElement>('result-sub')
+const resultRows = byId<HTMLDivElement>('result-rows')
+const resultLink = byId<HTMLAnchorElement>('result-link')
+const statusEl = byId<HTMLDivElement>('status')
+const logEl = byId<HTMLPreElement>('log')
 
 const ORIGIN = window.location.origin
+const REQUEST_TIMEOUT_MS = 120_000
 
 const NODE_URLS: Record<string, string> = {
 	mainnet: 'https://mainnet-rpc.ama.one/api',
@@ -75,39 +76,53 @@ interface WalletAccount {
 	name: string
 }
 
-let session: EstablishedSession | null = null
-let bridgeUrl = ''
-let currentNet = 'mainnet'
-let stopConnectListener: (() => void) | null = null
-// Multi-account state: every account the wallet exposes, which one is active for
-// signing, and a cache of each account's AMA balance (undefined = still loading).
-let accounts: WalletAccount[] = []
-let selectedAddress = ''
-let balances: Record<string, number | null> = {}
-
-type Status = 'idle' | 'wait' | 'ok' | 'err'
-function log(message: string, state: Status = 'idle') {
-	logEl.textContent = message
-	statusEl.dataset.state = state
+interface DemoState {
+	session: EstablishedSession | null
+	bridgeUrl: string
+	currentNet: string
+	stopConnectListener: (() => void) | null
+	accounts: WalletAccount[]
+	selectedAddress: string
+	// AMA balance per account: undefined = still loading, null = failed.
+	balances: Record<string, number | null>
+	cancelPending: Set<() => void>
 }
 
-const shortAddr = (a: string) => (a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a)
+const state: DemoState = {
+	session: null,
+	bridgeUrl: '',
+	currentNet: 'mainnet',
+	stopConnectListener: null,
+	accounts: [],
+	selectedAddress: '',
+	balances: {},
+	cancelPending: new Set()
+}
+
+type Status = 'idle' | 'wait' | 'ok' | 'err'
+function log(message: string, status: Status = 'idle') {
+	logEl.textContent = message
+	statusEl.dataset.state = status
+}
+
+const shortAddr = (address: string) =>
+	address.length > 16 ? `${address.slice(0, 8)}…${address.slice(-6)}` : address
 const nodeUrl = () => nodeInput.value.trim() || NODE_URLS.mainnet
 const actionButtons = () => [sendTransferBtn, signScBtn, signMsgBtn, genApiBtn]
-const setBusy = (busy: boolean) => actionButtons().forEach((b) => (b.disabled = busy))
+const setBusy = (busy: boolean) => actionButtons().forEach((button) => (button.disabled = busy))
 const genId = () =>
 	typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `req-${Date.now()}`
 
 const explorerTxUrl = (hash: string) => {
-	const base = EXPLORERS[currentNet]
+	const base = EXPLORERS[state.currentNet]
 	return base ? `${base}/tx/${hash}` : null
 }
 
 /** Network selector: mainnet/testnet lock the node URL; custom lets you type one. */
 function setNetwork(net: string) {
-	currentNet = net
-	for (const b of netseg.querySelectorAll<HTMLButtonElement>('.seg')) {
-		b.classList.toggle('active', b.dataset.net === net)
+	state.currentNet = net
+	for (const button of netseg.querySelectorAll<HTMLButtonElement>('.seg')) {
+		button.classList.toggle('active', button.dataset.net === net)
 	}
 	if (net === 'custom') {
 		nodeInput.readOnly = false
@@ -121,17 +136,21 @@ function setNetwork(net: string) {
 	}
 }
 
-async function connect() {
-	bridgeUrl = bridgeInput.value.trim() || 'https://bridge.ama.one'
-	stopConnectListener?.()
-
-	let request: { uri: string; pending: PendingConnect }
+function startConnectRequest(): { uri: string; pending: PendingConnect } | null {
 	try {
-		request = createConnectRequest({ origin: ORIGIN, bridgeUrl })
+		return createConnectRequest({ origin: ORIGIN, bridgeUrl: state.bridgeUrl })
 	} catch (error) {
 		log(`Cannot start: ${(error as Error).message}`, 'err')
-		return
+		return null
 	}
+}
+
+async function connect() {
+	state.bridgeUrl = bridgeInput.value.trim() || 'https://bridge.ama.one'
+	state.stopConnectListener?.()
+
+	const request = startConnectRequest()
+	if (!request) return
 	const { uri, pending } = request
 
 	await QRCode.toCanvas(qrCanvas, uri, { width: 240, margin: 1 })
@@ -141,15 +160,15 @@ async function connect() {
 
 	// Listen on the connect channel for the wallet's (public) connect response.
 	const connectClient = new BridgeClient({
-		bridgeUrl,
+		bridgeUrl: state.bridgeUrl,
 		clientId: deriveConnectChannel(pending.dappKeypair.publicKey),
 		pollWaitSeconds: 20
 	})
-	stopConnectListener = connectClient.start(
+	state.stopConnectListener = connectClient.start(
 		(frame) => {
-			stopConnectListener?.()
+			state.stopConnectListener?.()
 			try {
-				session = completeConnect(pending, frame.payload as ConnectResponseParams)
+				state.session = completeConnect(pending, frame.payload as ConnectResponseParams)
 				onConnected()
 			} catch (error) {
 				log(`Connect verification failed: ${(error as Error).message}`, 'err')
@@ -162,15 +181,16 @@ async function connect() {
 }
 
 function onConnected() {
+	const { session } = state
 	if (!session) return
 	qrBox.style.display = 'none'
 	connectCard.style.display = 'none'
 	sessionCard.style.display = 'flex'
 	// Seed with the connected account so the UI works even if the wallet is an
 	// older build without amadeus_getAccounts; loadAccounts() then enriches it.
-	accounts = [{ address: session.address, name: 'Connected account' }]
-	selectedAddress = session.address
-	balances = {}
+	state.accounts = [{ address: session.address, name: 'Connected account' }]
+	state.selectedAddress = session.address
+	state.balances = {}
 	renderAccounts()
 	void loadBalances()
 	void loadAccounts()
@@ -179,21 +199,21 @@ function onConnected() {
 }
 
 /** Format an AMA balance for the account list (undefined = loading, null = failed). */
-function fmtBal(v: number | null | undefined): string {
-	if (v === undefined) return '…'
-	if (v === null) return '—'
-	return v.toLocaleString(undefined, { maximumFractionDigits: 4 })
+function fmtBal(balance: number | null | undefined): string {
+	if (balance === undefined) return '…'
+	if (balance === null) return '—'
+	return balance.toLocaleString(undefined, { maximumFractionDigits: 4 })
 }
 
 /** Render every wallet account as a selectable row with its balance. */
 function renderAccounts() {
 	accountsLabel.textContent =
-		accounts.length > 1 ? `Wallet accounts · ${accounts.length}` : 'Wallet account'
+		state.accounts.length > 1 ? `Wallet accounts · ${state.accounts.length}` : 'Wallet account'
 	acctList.replaceChildren()
-	for (const acct of accounts) {
+	for (const acct of state.accounts) {
 		const row = document.createElement('button')
 		row.type = 'button'
-		row.className = 'acct-row' + (acct.address === selectedAddress ? ' selected' : '')
+		row.className = 'acct-row' + (acct.address === state.selectedAddress ? ' selected' : '')
 		row.dataset.addr = acct.address
 
 		const radio = document.createElement('span')
@@ -211,7 +231,7 @@ function renderAccounts() {
 
 		const bal = document.createElement('span')
 		bal.className = 'acct-bal'
-		bal.append(fmtBal(balances[acct.address]))
+		bal.append(fmtBal(state.balances[acct.address]))
 		const unit = document.createElement('span')
 		unit.className = 'u'
 		unit.textContent = ' AMA'
@@ -224,10 +244,10 @@ function renderAccounts() {
 
 /** Pick which account signs the next request; updates the transfer placeholder. */
 function selectAccount(address: string) {
-	selectedAddress = address
+	state.selectedAddress = address
 	recipientInput.placeholder = `Recipient address (blank = ${shortAddr(address)})`
 	renderAccounts()
-	const acct = accounts.find((a) => a.address === address)
+	const acct = state.accounts.find((account) => account.address === address)
 	log(`Active account: ${acct?.name ?? shortAddr(address)}`, 'ok')
 }
 
@@ -239,9 +259,9 @@ async function loadAccounts() {
 		(result) => {
 			const list = (result as { accounts?: WalletAccount[] }).accounts
 			if (!list?.length) return
-			accounts = list
-			if (!accounts.some((a) => a.address === selectedAddress)) {
-				selectedAddress = accounts[0].address
+			state.accounts = list
+			if (!list.some((account) => account.address === state.selectedAddress)) {
+				state.selectedAddress = list[0].address
 			}
 			renderAccounts()
 			void loadBalances()
@@ -252,16 +272,16 @@ async function loadAccounts() {
 
 /** Fetch each account's AMA balance from the selected node and refresh the list. */
 async function loadBalances() {
-	const targets = accounts.map((a) => a.address)
+	const targets = state.accounts.map((account) => account.address)
 	await Promise.all(
 		targets.map(async (address) => {
 			try {
 				const res = await fetch(`${nodeUrl()}/wallet/balance_all/${address}`)
 				const json = (await res.json()) as { balances?: { symbol: string; float: number }[] }
-				const ama = json.balances?.find((b) => b.symbol === 'AMA')
-				balances[address] = ama ? ama.float : 0
+				const ama = json.balances?.find((balance) => balance.symbol === 'AMA')
+				state.balances[address] = ama ? ama.float : 0
 			} catch {
-				balances[address] = null
+				state.balances[address] = null
 			}
 		})
 	)
@@ -269,12 +289,14 @@ async function loadBalances() {
 }
 
 function disconnect() {
-	stopConnectListener?.()
-	stopConnectListener = null
-	session = null
-	accounts = []
-	selectedAddress = ''
-	balances = {}
+	state.stopConnectListener?.()
+	state.stopConnectListener = null
+	state.cancelPending.forEach((cancel) => cancel())
+	setBusy(false)
+	state.session = null
+	state.accounts = []
+	state.selectedAddress = ''
+	state.balances = {}
 	sessionCard.style.display = 'none'
 	qrBox.style.display = 'none'
 	resultBox.style.display = 'none'
@@ -292,15 +314,15 @@ function showResult(opts: {
 	resultSub.textContent = opts.sub ?? ''
 	resultSub.style.display = opts.sub ? 'block' : 'none'
 	resultRows.replaceChildren()
-	for (const [k, v] of opts.rows) {
+	for (const [label, value] of opts.rows) {
 		const row = document.createElement('div')
 		row.className = 'rrow'
 		const key = document.createElement('span')
 		key.className = 'k'
-		key.textContent = k
+		key.textContent = label
 		const val = document.createElement('span')
 		val.className = 'v'
-		val.textContent = v
+		val.textContent = value
 		row.append(key, val)
 		resultRows.append(row)
 	}
@@ -325,7 +347,8 @@ async function sendRequest(
 	onResult: (result: unknown) => void | Promise<void>,
 	opts: { account?: string; silent?: boolean } = {}
 ) {
-	if (!session) return
+	if (!state.session) return
+	const { sharedKey } = state.session
 	// `silent` requests (e.g. getAccounts, auto-answered by the wallet) don't
 	// prompt the user, so they neither disable the action buttons nor log "approve".
 	if (!opts.silent) {
@@ -333,15 +356,24 @@ async function sendRequest(
 		resultBox.style.display = 'none'
 	}
 
-	const channels = deriveBridgeChannels(session.sharedKey)
+	const channels = deriveBridgeChannels(sharedKey)
 	const id = genId()
-	const client = new BridgeClient({ bridgeUrl, clientId: channels.toDapp, pollWaitSeconds: 20 })
+	const client = new BridgeClient({
+		bridgeUrl: state.bridgeUrl,
+		clientId: channels.toDapp,
+		pollWaitSeconds: 20
+	})
+	const finish = () => {
+		window.clearTimeout(timer)
+		stop()
+		state.cancelPending.delete(finish)
+	}
 
 	const stop = client.start(
 		async (frame) => {
-			stop()
+			finish()
 			try {
-				const response = openResponse(session!.sharedKey, frame.payload as SealedEnvelope, id)
+				const response = openResponse(sharedKey, frame.payload as SealedEnvelope, id)
 				if (!response.ok) {
 					if (!opts.silent) log(`Rejected: ${response.error.code} — ${response.error.message}`, 'err')
 					return
@@ -357,13 +389,22 @@ async function sendRequest(
 			if (!opts.silent) log(`Bridge error: ${String(error)}`, 'err')
 		}
 	)
+	// Without this, a wallet that never answers leaves the buttons disabled for good.
+	const timer = window.setTimeout(() => {
+		finish()
+		if (!opts.silent) {
+			setBusy(false)
+			log('No answer from the wallet after 2 minutes. Check the wallet and try again.', 'err')
+		}
+	}, REQUEST_TIMEOUT_MS)
+	state.cancelPending.add(finish)
 
 	try {
 		const request = makeRequest({ id, method, origin: ORIGIN, params, account: opts.account })
-		await client.send(channels.toWallet, id, sealRequest(session.sharedKey, request))
+		await client.send(channels.toWallet, id, sealRequest(sharedKey, request))
 		if (!opts.silent) log('Request sent — approve it in the wallet…', 'wait')
 	} catch (error) {
-		stop()
+		finish()
 		if (!opts.silent) {
 			setBusy(false)
 			log(`Send failed: ${(error as Error).message}`, 'err')
@@ -373,25 +414,34 @@ async function sendRequest(
 
 /** Submit the signed txPacked to the node (submit_and_wait) and return the hash. */
 async function submitSigned(result: unknown): Promise<string> {
-	const r = result as { txHash: string; txPacked: number[] }
+	const signed = result as { txHash: string; txPacked: number[] }
 	log('Signed — submitting to the chain…', 'wait')
-	await submitTransaction(r.txPacked, { nodeUrl: nodeUrl(), wait: true })
-	return r.txHash
+	const reply = await submitTransaction(signed.txPacked, { nodeUrl: nodeUrl(), wait: true })
+	// The node answers 200 with { error: "<code>" } when it rejects a tx.
+	const { error: code, receipt } = (reply ?? {}) as {
+		error?: unknown
+		receipt?: { success?: boolean; result?: unknown }
+	}
+	if (code !== 'ok') throw new Error(submitErrorMessage(String(code ?? reply)))
+	if (receipt?.success === false) {
+		throw new Error(
+			`On-chain, but the call failed: ${submitErrorMessage(String(receipt.result))}`
+		)
+	}
+	return signed.txHash
 }
 
 function sendTransfer() {
-	if (!session) return
-	const self = selectedAddress || session.address
+	if (!state.session) return
+	const self = state.selectedAddress || state.session.address
 	const recipient = recipientInput.value.trim() || self
 	const amount = amountInput.value.trim() || '1'
-	let atomic: string
-	try {
-		atomic = String(toAtomicAma(amount))
-	} catch {
+	const atomic = toAtomicAmount(amount)
+	if (!atomic) {
 		log('Enter a valid amount.', 'err')
 		return
 	}
-	const fromAcct = accounts.find((a) => a.address === self)
+	const fromAcct = state.accounts.find((account) => account.address === self)
 	void sendRequest(
 		'amadeus_signTransaction',
 		{ contract: 'Coin', method: 'transfer', args: [recipient, atomic, 'AMA'] },
@@ -416,22 +466,20 @@ function sendTransfer() {
 }
 
 function signContractCall() {
-	if (!session) return
+	if (!state.session) return
 	const contract = scContractInput.value.trim()
 	const method = scMethodInput.value.trim()
 	if (!contract || !method) {
 		log('Contract and method are required.', 'err')
 		return
 	}
-	let args: unknown[]
-	try {
-		args = JSON.parse(scArgsInput.value.trim() || '[]')
-		if (!Array.isArray(args)) throw new Error('not an array')
-	} catch {
+	const args = parseArgs(scArgsInput.value)
+	if (!args) {
 		log('Args must be a JSON array, e.g. ["addr","1000000000","AMA"].', 'err')
 		return
 	}
-	const signer = accounts.find((a) => a.address === selectedAddress)
+	const { selectedAddress } = state
+	const signer = state.accounts.find((account) => account.address === selectedAddress)
 	void sendRequest(
 		'amadeus_signTransaction',
 		{ contract, method, args },
@@ -453,23 +501,24 @@ function signContractCall() {
 }
 
 function signMsg() {
-	if (!session) return
+	if (!state.session) return
 	const message = msgInput.value.trim()
 	if (!message) {
 		log('Enter a message to sign.', 'err')
 		return
 	}
-	const signer = accounts.find((a) => a.address === selectedAddress)
+	const { selectedAddress } = state
+	const signer = state.accounts.find((account) => account.address === selectedAddress)
 	void sendRequest(
 		'amadeus_signMessage',
 		{ message },
 		(result) => {
-			const r = result as { message: string; signature: string; address: string }
+			const signed = result as { message: string; signature: string; address: string }
 			// Prove the signature is real by verifying it right here in the dApp.
 			const valid = verifyMessage({
-				message: r.message,
-				signature: r.signature,
-				address: r.address
+				message: signed.message,
+				signature: signed.signature,
+				address: signed.address
 			})
 			showResult({
 				title: 'Message signed',
@@ -477,9 +526,9 @@ function signMsg() {
 					? 'Signature verified in the dApp — no on-chain transaction'
 					: 'Warning: signature did NOT verify',
 				rows: [
-					['Signer', signer?.name ?? shortAddr(r.address)],
-					['Message', r.message],
-					['Signature', r.signature],
+					['Signer', signer?.name ?? shortAddr(signed.address)],
+					['Message', signed.message],
+					['Signature', signed.signature],
 					['Verified', valid ? 'yes ✓' : 'no ✗']
 				]
 			})
@@ -490,8 +539,9 @@ function signMsg() {
 }
 
 function requestApiKey() {
-	if (!session) return
-	const signer = accounts.find((a) => a.address === selectedAddress)
+	if (!state.session) return
+	const { selectedAddress } = state
+	const signer = state.accounts.find((account) => account.address === selectedAddress)
 	void sendRequest(
 		'amadeus_generateApiKey',
 		{ aud: ORIGIN, exp_in: 3600 },
@@ -525,16 +575,17 @@ copyBtn.addEventListener('click', () => {
 	})
 })
 
-netseg.addEventListener('click', (e) => {
-	const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.seg')
+netseg.addEventListener('click', (event) => {
+	const btn = (event.target as HTMLElement).closest<HTMLButtonElement>('.seg')
 	if (btn?.dataset.net) setNetwork(btn.dataset.net)
 })
 
 disconnectBtn.addEventListener('click', disconnect)
 
-acctList.addEventListener('click', (e) => {
-	const row = (e.target as HTMLElement).closest<HTMLButtonElement>('.acct-row')
-	if (row?.dataset.addr && row.dataset.addr !== selectedAddress) selectAccount(row.dataset.addr)
+acctList.addEventListener('click', (event) => {
+	const row = (event.target as HTMLElement).closest<HTMLButtonElement>('.acct-row')
+	if (row?.dataset.addr && row.dataset.addr !== state.selectedAddress)
+		selectAccount(row.dataset.addr)
 })
 
 sendTransferBtn.addEventListener('click', sendTransfer)
