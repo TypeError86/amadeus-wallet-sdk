@@ -79,12 +79,12 @@ if (wallet.isAvailable()) {
 ```
 
 The client also has `getAccount`, `getNetwork`, `signTransaction`, `on` / `off`
-for provider events, `ensureApiKey` (returns a cached API key or asks the wallet
-for a new one) and `switchAccount(target?)`. `switchAccount` asks the wallet to
-change the active account; the extension asks the user to approve (it resolves
-at once only when `target` is already active), and the call throws
-`WalletSdkError` code `UNSUPPORTED` on extension builds without
-`requestSwitchAccount`.
+for provider events, `ensureApiKey` (returns a cached API key signed by the
+active account or asks the wallet for a new one) and `switchAccount(target?)`.
+`switchAccount` asks the wallet to change the active account; the extension asks
+the user to approve (it resolves at once only when `target` is already active),
+and the call throws `WalletSdkError` code `UNSUPPORTED` on extension builds
+without `requestSwitchAccount`.
 
 The extension can inject `window.amadeus` after your script runs. Listen for
 `WALLET_INITIALIZED_EVENT` (`amadeus-wallet#initialized`, not
