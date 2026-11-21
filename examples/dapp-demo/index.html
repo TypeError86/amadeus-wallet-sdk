@@ -118,6 +118,11 @@
 				flex-direction: column;
 				gap: 0.45rem;
 			}
+			.field-hint {
+				margin: 0;
+				font-size: 0.76rem;
+				color: var(--dim);
+			}
 			.field-label {
 				font-size: 0.7rem;
 				font-weight: 600;
@@ -585,12 +590,13 @@
 
 				<div class="field">
 					<span class="field-label">Network</span>
-					<div class="segmented" id="netseg">
+					<div class="segmented" id="netseg" role="group" aria-label="Network" aria-describedby="net-hint">
 						<button type="button" class="seg active" data-net="mainnet">Mainnet</button>
 						<button type="button" class="seg" data-net="testnet">Testnet</button>
 						<button type="button" class="seg" data-net="custom">Custom</button>
 					</div>
 					<input id="node" value="https://mainnet-rpc.ama.one/api" spellcheck="false" readonly />
+					<p class="field-hint" id="net-hint">Must match your wallet's network, or the node rejects the signature.</p>
 				</div>
 
 				<button id="connect" class="btn-primary">Connect wallet</button>
